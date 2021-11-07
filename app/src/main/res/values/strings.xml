@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Monitor</string>
+    <string name="homeLocation">Home</string>
+    <string name="refreshData">Refresh</string>
+    <string name="dataType1">Temperature</string>
+    <string name="dataType2">Humidity (empty)</string>
+    <string name="firstHeader">Location</string>
+    <string name="describeFAB">dummy add value</string>
+</resources>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:padding="5sp"
+    android:id="@+id/idListEntryContainer">
+
+    <TextView
+        android:id="@+id/idTime"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="time_placeholder"
+        android:textColor="@color/black"
+        android:textSize="15dp"></TextView>
+
+    <TextView
+        android:id="@+id/idParamName"
+        app:layout_constraintTop_toBottomOf="@id/idTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="temperature"
+        android:textColor="@color/black"
+        android:textSize="15dp"></TextView>
+
+    <LinearLayout
+        android:id="@+id/idDataValueGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/idParamName">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Value"
+            android:textColor="@color/black"
+            android:textSize="10dp"></TextView>
+        <TextView
+            android:id="@+id/idTemp"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="celsius_placeholder"
+            android:textColor="@color/black"
+            android:textSize="10dp"
+            ></TextView>
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/idLinkFrame"
+        app:layout_constraintTop_toBottomOf="@id/idDataValueGroup">
+        <TextView
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Link"
+            android:textSize="10dp"
+            android:textColor="@color/black"
+            ></TextView>
+        <TextView
+            android:id="@+id/idLinkInfo"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="http://..."
+            android:textSize="10dp"
+            android:textColor="@color/black"
+            ></TextView>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
