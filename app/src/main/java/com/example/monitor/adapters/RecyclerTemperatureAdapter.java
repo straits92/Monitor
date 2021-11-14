@@ -17,7 +17,7 @@ import com.example.monitor.models.Temperature;
 
 import java.util.ArrayList;
 
-/* RecyclerView is populated by the OS using these callback methods */
+/* NOT USED ANYMORE */
 public class RecyclerTemperatureAdapter extends RecyclerView.Adapter<RecyclerTemperatureAdapter.ViewHolder> {
 
     private static final String TAG = "RecyclerTemperatureAdapter";

@@ -39,6 +39,11 @@ dependencies {
 
     // livedata
     def lifecycle_version = "2.0.0"
+    def room_version = "2.3.0"
+
+    // Room
+    implementation "androidx.room:room-runtime:$room_version"
+    annotationProcessor "androidx.room:room-compiler:$room_version"
 
     // ViewModel
     implementation "androidx.lifecycle:lifecycle-viewmodel:$lifecycle_version"
@@ -53,10 +58,12 @@ dependencies {
     // Annotation processor
     annotationProcessor "androidx.lifecycle:lifecycle-compiler:$lifecycle_version"
 
-
-
     // recyclerview
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
+
+    // dagger
+//    implementation 'com.google.dagger:dagger:2.40'
+//    annotationProcessor 'com.google.dagger:dagger-compiler:2.40'
 
 
 }

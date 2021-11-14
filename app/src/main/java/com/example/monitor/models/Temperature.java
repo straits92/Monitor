@@ -1,5 +1,6 @@
 package com.example.monitor.models;
 
+/* NOT USED ANYMORE */
 public class Temperature {
 
     private String celsius;

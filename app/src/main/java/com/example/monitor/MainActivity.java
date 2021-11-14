@@ -11,18 +11,30 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import com.example.monitor.adapters.RecyclerTemperatureAdapter;
+import com.example.monitor.adapters.RecyclerWeatherAdapter;
 import com.example.monitor.models.Temperature;
+import com.example.monitor.models.Weather;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
+import java.util.List;
+/* Monitor App: intended to fetch weather data from a weather station API,
+* fetch temperature (and potentially other) data from a home temperature
+* sensor governed by a Raspberry Pi set-up, and to display / compare these
+* two sets of data on graphs. The data should be fetched on an hourly basis.
+*  */
 
 /* to-do list
- * handle object dependencies via dependency injection
+ * handle object dependencies via dependency injection:
+ *      (not implemented: used to reduce boilerplate code; does not preserve state.)
+ *
  * implement a data cache queried by repository
- * determine where data for the app is actually preserved
+ *      (seems to be made, and preserved, by Room functionality)
+ *
  * implement network utilities for the web server data source
  * implement background hourly updates of the data
  * implement graphing display for data
@@ -33,13 +45,13 @@ import java.util.ArrayList;
  * future extensions: humidity, other parameters
  *
  * */
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
 
     /* declare app modules */
     private MainActivityViewModel temperatureViewModel;
-    private RecyclerTemperatureAdapter temperatureAdapter;
 
     /* declare display elements here */
     private RecyclerView recyclerView;
@@ -57,27 +69,39 @@ public class MainActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
 
+        /* initialize recycler view */
+        /* alternative_adapter = new RecyclerAdapter(pass entries, pass this context); */
+        LinearLayoutManager llm = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(llm); /* necessary for forming the recyclerview */
+        RecyclerWeatherAdapter weatherAdapter = new RecyclerWeatherAdapter();
+        recyclerView.setAdapter(weatherAdapter);
+
         /* dummy action for simulating async addition of new data to LiveData */
         dummyFab = findViewById(R.id.floatingActionButton);
         dummyFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                temperatureViewModel.addNewValue(new Temperature("20", "http://...", "10"));
+                showProgressBar();
+                temperatureViewModel.insert(new Weather("200", "WEATHER_ENTRY", "100"));
             }
         });
         hideProgressBar();
 
-        /* instantiate and set observation of the viewmodel; activity does not see lower modules */
+        /* ViewModel scoped to lifecycle of this activity; androidOS destroys it when finished */
         temperatureViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
-        temperatureViewModel.init();
-        temperatureViewModel.getTempDataEntries().observe(this, new Observer<ArrayList<Temperature>>() {
-            @Override /* should below be nullable? */
-            public void onChanged(@Nullable  ArrayList<Temperature> temperatures) {
-                temperatureAdapter.notifyDataSetChanged();
+
+        /* observe() is a livedata method, activity gets passed to it */
+        temperatureViewModel.getWeatherDataEntries().observe(this, new Observer<List<Weather>>(){
+            @Override
+            public void onChanged(@Nullable List<Weather> weathers) {
+                Log.d(TAG, "Data observed from WeatherRepository (new).");
+                Toast.makeText(MainActivity.this, "onChanged", Toast.LENGTH_SHORT).show();
+                weatherAdapter.setWeatherRecyclerEntries(weathers);
+                /* use notifyItemInserted, notifyItemRemoved */
             }
         });
 
-        /* for data update progress bar */
+        /* for data update progress bar tied to RecyclerView */
         temperatureViewModel.getIsUpdating().observe(this, new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
@@ -85,30 +109,14 @@ public class MainActivity extends AppCompatActivity {
                     showProgressBar();
                 } else {
                     hideProgressBar();
-                    recyclerView.smoothScrollToPosition(temperatureViewModel
-                            .getTempDataEntries().getValue().size() - 1);
+                    recyclerView.smoothScrollToPosition(0);/* first element in list, last inserted */
                 }
             }
         });
 
-        initRecyclerView();
-
         Log.d(TAG, "onCreate: started.");
-    }
-
-    private void initRecyclerView() {
-        Log.d(TAG, "dummyInitRecyclerView: populate with placeholders");
-
-        /* classes should not be responsible for creating their own dependencies;
-         * dependencies should be passed to an object instance from the outside */
-        temperatureAdapter = new RecyclerTemperatureAdapter(temperatureViewModel
-                .getTempDataEntries().getValue(), this );
-        LinearLayoutManager llm = new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(llm); /* necessary for forming the recyclerview */
-        recyclerView.setAdapter(temperatureAdapter);
     }
 
     private void showProgressBar() { progressBar.setVisibility(View.VISIBLE);}
     private void hideProgressBar() { progressBar.setVisibility(View.INVISIBLE);}
-
 }

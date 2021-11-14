@@ -6,8 +6,7 @@ import com.example.monitor.models.Temperature;
 
 import java.util.ArrayList;
 
-/* should be implemented as a singleton pattern, to avoid having open connections to
- * web servers, APIs, caches etc */
+/* NOT USED ANYMORE */
 public class DataRepository {
 
     private static DataRepository instance;
@@ -24,6 +23,7 @@ public class DataRepository {
 
         mimicDataRetrievalFromRemote();
 
+        /* create mutable object, bind dataSet to it */
         MutableLiveData<ArrayList<Temperature>> data = new MutableLiveData<>();
         data.setValue(dataSet);
 
