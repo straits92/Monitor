@@ -12,8 +12,9 @@ import com.example.monitor.models.Weather;
 
 import java.util.List;
 
-/* interface provides methods which are annotated; @Dao library generates method bodies;
-* often one DAO is made per entity, this is for Weather */
+/* interface provides methods which are annotated; @Dao library implements this
+* interface; it generates method bodies.
+* Often one DAO is made per entity, this is for Weather */
 @Dao
 public interface WeatherDao {
 

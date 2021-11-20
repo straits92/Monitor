@@ -9,6 +9,23 @@ public class Weather {
 
     @PrimaryKey(autoGenerate = true)
     private int id;
+
+    public void setCelsius(String celsius) {
+        this.celsius = celsius;
+    }
+
+    public void setLink(String link) {
+        this.link = link;
+    }
+
+    public void setTime(String time) {
+        this.time = time;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
     private String celsius;
     private String link;
     private String time;
@@ -18,10 +35,6 @@ public class Weather {
         this.celsius = celsius;
         this.link = link;
         this.time = time;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public int getId() {

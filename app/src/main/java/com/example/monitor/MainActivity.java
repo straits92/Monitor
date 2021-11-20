@@ -10,12 +10,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.example.monitor.adapters.RecyclerTemperatureAdapter;
 import com.example.monitor.adapters.RecyclerWeatherAdapter;
-import com.example.monitor.models.Temperature;
+import com.example.monitor.models.Location;
 import com.example.monitor.models.Weather;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -36,6 +36,8 @@ import java.util.List;
  *      (seems to be made, and preserved, by Room functionality)
  *
  * implement network utilities for the web server data source
+ *      (done for initial 12hr.)
+ *
  * implement background hourly updates of the data
  * implement graphing display for data
  * have 2+ data arrays maintained for different data sources of temp
@@ -56,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
     /* declare display elements here */
     private RecyclerView recyclerView;
     private ProgressBar progressBar;
+    private Button homeLocation;
 
     /* dummy action button for updates to the list */
     private FloatingActionButton dummyFab;
@@ -68,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
         /* initiate display elements */
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
+        homeLocation = findViewById(R.id.homeLocation); /* should have an onClick too */
 
         /* initialize recycler view */
         /* alternative_adapter = new RecyclerAdapter(pass entries, pass this context); */
@@ -75,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(llm); /* necessary for forming the recyclerview */
         RecyclerWeatherAdapter weatherAdapter = new RecyclerWeatherAdapter();
         recyclerView.setAdapter(weatherAdapter);
+
+        /* is a location button adapter necessary if there's only one entry? SHOULDN'T BE */
 
         /* dummy action for simulating async addition of new data to LiveData */
         dummyFab = findViewById(R.id.floatingActionButton);
@@ -95,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onChanged(@Nullable List<Weather> weathers) {
                 Log.d(TAG, "Data observed from WeatherRepository (new).");
-                Toast.makeText(MainActivity.this, "onChanged", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "onChanged: weather data", Toast.LENGTH_SHORT).show();
                 weatherAdapter.setWeatherRecyclerEntries(weathers);
                 /* use notifyItemInserted, notifyItemRemoved */
             }
@@ -113,6 +119,20 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        /* update location button/display; not recyclerview */
+        temperatureViewModel.getLocationData().observe(this, new Observer<List<Location>>(){
+            @Override
+            public void onChanged(@Nullable List<Location> locations) {
+
+                Log.d(TAG, "Data observed from LocationDatabase thru Weather Repository.");
+                Toast.makeText(MainActivity.this, "onChanged: location", Toast.LENGTH_SHORT).show();
+                String localizedName = temperatureViewModel.getLocationData().getValue().get(0).getLocalizedName();
+                homeLocation.setText(localizedName);
+                /* use notifyItemInserted, notifyItemRemoved, notifyDataSetChanged ?? adapter methods */
+            }
+        });
+
 
         Log.d(TAG, "onCreate: started.");
     }
