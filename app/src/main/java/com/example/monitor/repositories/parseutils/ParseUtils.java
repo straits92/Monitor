@@ -1,8 +1,6 @@
 package com.example.monitor.repositories.parseutils;
 
-import android.util.Log;
-
-import com.example.monitor.models.Location;
+import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 
 import org.json.JSONArray;
@@ -10,7 +8,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /* JSON key strings specifically for accuweather JSON objects */
@@ -68,13 +65,13 @@ public class ParseUtils {
     }
 
     /* JSON parse for location */
-    public static List<Location> parseLocationJSON(String locationSearchResults) {
+    public static List<MonitorLocation> parseLocationJSON(String locationSearchResults) {
         String locationString;
         String localizedName;
         String latitude;
         String longitude;
-        List<Location> locationArrayList = new ArrayList<Location>();
-        Location location = new Location(null, null, null,
+        List<MonitorLocation> monitorLocationArrayList = new ArrayList<MonitorLocation>();
+        MonitorLocation monitorLocation = new MonitorLocation(null, null, null,
                 null, false);
 
         if (locationSearchResults != null) {
@@ -88,14 +85,15 @@ public class ParseUtils {
                 locationString = result.getString("Key");
                 localizedName = result.getString("LocalizedName");
 
-                location.setLocation(locationString);
-                location.setLocalizedName(localizedName);
-                location.setLatitude(latitude);
-                location.setLongitude(longitude);
+                monitorLocation.setLocation(locationString);
+                monitorLocation.setLocalizedName(localizedName);
+                monitorLocation.setLatitude(latitude);
+                monitorLocation.setLongitude(longitude);
+                monitorLocation.setGpsAvailable(false);
                 /* should GPS availability be set?  */
 
-                locationArrayList.add(location);
-                return locationArrayList;
+                monitorLocationArrayList.add(monitorLocation);
+                return monitorLocationArrayList;
             } catch (JSONException e) {
                 e.printStackTrace();
             }

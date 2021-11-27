@@ -9,9 +9,6 @@ import java.net.URL;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
-/* maybe this should be outside of the remoteModel execution model, so that it
- * can be constructed multiple times and have URL passed to it. if it is static,
- * then it may only be constructed once, which means that URL can't be passed to each object. */
 public class contactWeatherApiTask implements Callable<String> {
     private static final String TAG = "contactWeatherApiTask";
 

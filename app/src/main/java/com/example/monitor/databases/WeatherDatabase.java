@@ -51,10 +51,10 @@ public abstract class WeatherDatabase extends RoomDatabase {
         public void onCreate(@NonNull SupportSQLiteDatabase db) {
             super.onCreate(db);
 
-            /* initially populate database here, on a bg thread */
+            /* dummy populate database here, on a bg thread */
 
             /* with the asynctask*/
-            new PopulateDbBackgroundTask(instance).execute();
+//            new PopulateDbBackgroundTask(instance).execute();
 
             /* with the callable; currently not working */
 //            try {
@@ -81,9 +81,6 @@ public abstract class WeatherDatabase extends RoomDatabase {
             Log.d(TAG, "PopulateDbBackgroundTask bg thread: called !!!!!!!!!!!!!!!!!!");
             weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "0"));
             weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "1"));
-            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "2"));
-            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "3"));
-            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "4"));
             Log.d(TAG, "PopulateDbBackgroundTask bg thread: dummy weather points inserted!!!!!!!!!!!!!!!!!!");
 
             return null;
@@ -102,9 +99,6 @@ public abstract class WeatherDatabase extends RoomDatabase {
                 weatherDao.insert(new Weather("1", "CALLABLE_weatherdb", "0"));
 //                Log.d(TAG, "FROM INITIALIZED" +weatherDao.getAllWeatherPoints().getValue().get(0).getLink());
                 weatherDao.insert(new Weather("2", "CALLABLE_weatherdb", "0"));
-                weatherDao.insert(new Weather("3", "CALLABLE_weatherdb", "0"));
-                weatherDao.insert(new Weather("4", "CALLABLE_weatherdb", "0"));
-                weatherDao.insert(new Weather("5", "CALLABLE_weatherdb", "0"));
                 Log.d(TAG, "from Callable bg thread: dummy weather points inserted!!!!!!!!!!!!!!!!!!");
                 return null;
             }

@@ -1,28 +1,25 @@
 package com.example.monitor.repositories.execmodel;
 
+import android.app.Application;
 import android.util.Log;
-
-import androidx.room.Dao;
 
 import com.example.monitor.backgroundutil.ExecutorHelper;
 import com.example.monitor.databases.LocationDao;
 import com.example.monitor.databases.WeatherDao;
-import com.example.monitor.models.Location;
+import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.networkutils.NetworkUtils;
 import com.example.monitor.repositories.parseutils.ParseUtils;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeoutException;
 
 /* threadpool types
 *
@@ -39,7 +36,8 @@ import java.util.concurrent.atomic.AtomicReference;
 * the tasks are distributed in the pool based on when they should be executed.
 *
 * single threaded executor: size of pool is 1. recreates threads killed due to
-* exceptions. fetches and executes tasks submitted to queue sequentially.
+* exceptions. fetches and executes tasks submitted to queue sequentially. first task submitted
+* finishes before the second one is taken by the thread.
 *
 * */
 
@@ -55,122 +53,145 @@ public class RemoteDataFetchModel {
     private static RemoteDataFetchModel instance;
     private static WeatherDao weatherDaoReference;
     private static LocationDao locationDaoReference;
-    /* always runs first task submitted before the second one. so if the first finishes
-    * before the second gets taken up by the thread, safe to submit a http location request,
-    * followed by a http weather request? */
-    /* so want a single executor to do the initial loc+weather data fetch,
-    * and the 12hour fetches,
-    * but a thread pool for the scheduled hourly weather fetches.
-    * and maybe another single executor for subsequent Dao operations; whose tasks
-    * will actually be submitted by a thread from the scheduled hourly fetches? */
-    private static ExecutorService singleExecutor;
+    private static Application applicationFromRepository;
+
+    /* a location single executor to do any prompted location data fetch,
+    * a weather single executor to do the 12hour weather data fetches,
+    * a caching single executor for storing data into databases via Dao,
+    * a 2-thread pool for the scheduled hourly weather fetches (for API and raspberry).
+    */
+    private static ExecutorService weatherExecutor;
+    private static ExecutorService locationExecutor;
+    private static ExecutorService cachingExecutor;
     private static ScheduledExecutorService scheduledExecutor;
-    /* if Dao access can't be made via reference, then instead of a static instance, it may be
-    * necessary to construct the RemoteDataFetchModel via constructor and assign a non-static
-    * Dao */
 
-    /* default location data; should it be here or in another module? */
-    private static String location = "298198";
-    private static String localizedName = "Belgrade";
-
-    /* data should be obtained from GPS task thread; reference values are:
-    * Novi Sad: lat: 44.818, lon: 20.457
-    * Belgrade: lat: 44.8125, lon: 20.4612  */
-    private static boolean GPS_AVAILABLE = false;
-    private static AtomicReference<String> latitude = new AtomicReference<>("44.8125");
-    private static AtomicReference<String> longitude = new AtomicReference<>("20.4612");
-
-    /* singleton, instantiated in environment which provides a data access object */
-    public static RemoteDataFetchModel getInstance(WeatherDao weatherDao, LocationDao locationDao) {
+    /* singleton, instantiated in environment which provides a data access object and reference to activity  */
+    public static RemoteDataFetchModel getInstance(WeatherDao weatherDao, LocationDao locationDao, Application application) {
         if (instance == null){
             instance = new RemoteDataFetchModel();
             weatherDaoReference = weatherDao;
             locationDaoReference = locationDao;
+            applicationFromRepository = application;
 
             /* initiate all necessary executors */
-            singleExecutor = ExecutorHelper.getSingleThreadExecutorInstance();
+            weatherExecutor = ExecutorHelper.getSingleThreadExecutorInstance();
+            locationExecutor = ExecutorHelper.getSingleThreadExecutorInstance();
+            cachingExecutor = ExecutorHelper.getSingleThreadExecutorInstance();
             scheduledExecutor = ExecutorHelper.getScheduledPool();
 
-            /* fetching GPS data to be done in separate thread for lat, lon info, prior to
-            * forming the URL for a location request. If failed, default to Belgrade lat,lon */
+            /* get GPS lat,lon from android. then, get location key from accuweather based on that.
+            * at app startup this will be a blocking task, performed in another thread while the
+            * main thread waits. but onClick and periodic, this task will be in the background.
+            * then write the location key, and the lat/lon, to the location db.
+            * there should also be a methodology to be followed regarding weather data stored
+            * in case of a location change. */
+            String location = getCurrentLocation(); /* blocking: gets the location key to be part of weatherURL */
 
-            /* prepare URLs before passing them into tasks */
-            /* forecastType: 0, 12hour; 1, 1hour. */
-            /* periodic locationUrl should fetch location data from locationDao; not implemented */
-            URL locationUrl = NetworkUtils.buildUrlForLocation(latitude.get(), longitude.get());
-            URL twelveHourWeatherUrl = NetworkUtils.buildUrlForWeather(0, location);
-            URL hourlyWeatherUrl = NetworkUtils.buildUrlForWeather(1, location);
+            /* get forecast based on initial location (blocking) */
+            getInitialForecast(location);
 
-            /* submit initial data task, and periodic tasks, to respective executors */
-            Future<String> initialLocationTask = singleExecutor
-                    .submit(new contactWeatherApiTask(locationUrl));
-            Future<String> initialWeatherTask = singleExecutor
-                    .submit(new contactWeatherApiTask(twelveHourWeatherUrl));
-
-            /* but where should this be tried and caught? */
-//            Future<Void> periodicWeatherTask = scheduledExecutor
-//                    .scheduleAtFixedRate(new contactWeatherApiTask(hourlyWeatherUrl), 0, 1, TimeUnit.HOURS);
-
-            /* Separate thread blocks until the response is obtained in Future<>. Extract network
-            * response by parseJSON methods. Then update LiveData via Dao. Use another executor? */
-            initialReceiveResponsesAndCacheData(initialLocationTask, initialWeatherTask);
+            /* periodic hourly request based on cached location. use seconds, minutes for testing */
+            setUpPeriodicWeatherQueries((Integer) 30);
 
         }
         return instance;
     }
 
-    /* receive+cache location then weather info. potentially decouple. */
-    private static synchronized Void initialReceiveResponsesAndCacheData(Future<String> locationResponse, Future<String> weatherResponse)
-            /*throws ExecutionException, InterruptedException*/ {
-        /* this executor, or another one decoupled from weatherAPI tasks?? */
-        Future<Void> task = singleExecutor.submit(new Callable<Void>() {
-            @Override
-            public Void call() {
-                List<Weather> weatherList;
-                List<Location> locationList;
-                String successfulLocation;
-                String successfulWeather;
+    /* wrapper method invoking gps task and accuweather location task*/
+    public static String getCurrentLocation() {
+        String locationResponse = null;
+        URL locationUrl;
+        boolean isFromGps = false;
 
-                /* blocking methods. if either fail, parsing + caching via Dao do not occur */
-                try {
-                    successfulLocation = locationResponse.get();
-                } catch (ExecutionException | InterruptedException e) {
-                    successfulLocation ="{\"Version\":1,\"Key\":\"298198\",\"Type\":\"City\",\"Rank\":20,\"LocalizedName\":\"Belgrade\",\"EnglishName\":\"Belgrade\",\"PrimaryPostalCode\":\"\"}";
-                    e.printStackTrace();
-                    return null;
-                }
+        /* default is Novi Sad. Belgrade data: location "298198", lat: 44.8125, lon: 20.4612  */
+        ArrayList<String> gpsLatLon = new ArrayList<>();
+        gpsLatLon.add(0, " 45.267136"); gpsLatLon.add(1, "19.833549");
+        List<MonitorLocation> monitorLocationList = new ArrayList<>();
+        monitorLocationList.add(new MonitorLocation("298486", "Novi Sad", gpsLatLon.get(0), gpsLatLon.get(1), false));
 
-                try {
-                    successfulWeather = weatherResponse.get();
-                } catch (ExecutionException | InterruptedException e) {
-                    successfulWeather = "{}";
-                    e.printStackTrace();
-                    return null;
-                }
+        /* Android GPS blocking task */
+        Future<ArrayList<String>> gpsLatLonTask = locationExecutor.submit(new getGpsTask(applicationFromRepository, gpsLatLon));
+        try {
+            gpsLatLon = gpsLatLonTask.get(2500, TimeUnit.MILLISECONDS);
+            isFromGps = true;
+        } catch (TimeoutException t) {
+//            t.printStackTrace();
+            Log.i(TAG, "getCurrentLocation(): TimeoutException; default location: "+monitorLocationList.get(0).getLocalizedName());
+        } catch (ExecutionException | InterruptedException ei) {
+            Log.i(TAG, "getCurrentLocation(): Execution or Interrupted exception");
+            ei.printStackTrace();
+        }
 
-                /* parseJSON methods to get ArrayList<Weather> and ArrayList<Location> */
-                weatherList = ParseUtils.parseWeatherJSON(successfulWeather);
-                locationList = ParseUtils.parseLocationJSON(successfulLocation);
+        /* Accuweather API query */
+        locationUrl = NetworkUtils.buildUrlForLocation(gpsLatLon.get(0), gpsLatLon.get(1));
+        Future<String> initialLocationTask = locationExecutor.submit(new contactWeatherApiTask(locationUrl));
+        try {
+            locationResponse = initialLocationTask.get(4500, TimeUnit.MILLISECONDS);
+            Log.d(TAG, "getCurrentLocation: obtained location response from Accuweather");
 
-                /* ArrayList implements abstract List, so it should be possible to pass it
-                 as such to a Dao method without explicitly extracting entries
-                 from ArrayList before calling the Dao method?? or extract from ArrayList? */
-                /* delete + insert LiveData could instead be updated, or just called from another
-                * synchronized method, leaving this caller unsynced */
-                weatherDaoReference.deleteAllWeatherPoints();
-                locationDaoReference.deleteLocationTable();
-                /* then insert new data into LiveData via Dao */
-                weatherDaoReference.insertWeatherList(weatherList);
-                locationDaoReference.insertLocationList(locationList);
+            /* parse locationResponse to get the actual location key */
+            monitorLocationList = ParseUtils.parseLocationJSON(locationResponse);
+            monitorLocationList.get(0).setGpsAvailable(isFromGps); // if fetched by gps
+        } catch (TimeoutException t) {
+//            t.printStackTrace();
+            Log.d(TAG, "getCurrentLocation: timeout of accuweather API query; default location: "+monitorLocationList.get(0).getLocalizedName());
+        } catch (ExecutionException | InterruptedException ei){
+            ei.printStackTrace();
+        }
 
-                return null;
-            }
-        });
-        /* don't "block until completion" */
-        return null /*task.get()*/;
+        /* cache location data into LiveData via Dao on worker thread; non-blocking */
+        cachingExecutor.submit(new cachingLocationOrWeatherDataTask(monitorLocationList, locationDaoReference));
+
+        /* return location key info for further use by weather url */
+        return monitorLocationList.get(0).getLocation();
     }
 
+    public static synchronized void getInitialForecast(String location) {
+        String weatherResponse;
+        List<Weather> weatherList;
+
+        /* forecastType: 0, 12hour; 1, 1hour. */
+        URL twelveHourWeatherUrl = NetworkUtils.buildUrlForWeather(0, location);
+        Future<String> initialWeatherTask = weatherExecutor
+                .submit(new contactWeatherApiTask(twelveHourWeatherUrl));
+        try {
+            weatherResponse = initialWeatherTask.get(2000, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException t) {
+            Log.d(TAG, "getInitialForecast: timeout, initial forecast not obtained ");
+//            t.printStackTrace();
+            return;
+        } catch (ExecutionException | InterruptedException e) {
+            Log.d(TAG, "getInitialForecast: execution or interruption exceptions");
+            e.printStackTrace();
+            return;
+        }
+
+        /* parse the JSON response into the List structure needed for the database */
+        weatherList = ParseUtils.parseWeatherJSON(weatherResponse);
+
+        /* then cache the weather here; non-blocking */
+        cachingExecutor.submit(new cachingLocationOrWeatherDataTask(weatherList, weatherDaoReference));
+
+    }
+
+    public static synchronized void setUpPeriodicWeatherQueries(Integer seconds) {
+
+        /* define the structure of the hourly weather query tasks */
 
 
+
+        /* URl to be built each time the hourly query to be done based on cached loc */
+//        URL hourlyWeatherUrl = NetworkUtils.buildUrlForWeather(1, location);
+
+        /* periodically scheduled tasks should be runnable, not callable; only schedule()
+        * runs a callable? */
+//        Future<Void> periodicWeatherTask = scheduledExecutor
+//                .scheduleAtFixedRate(new contactWeatherApiTask(hourlyWeatherUrl), 0, 1, TimeUnit.HOURS);
+
+
+    }
+
+    /* provide method that exposes GPS functionality to parent architecture components,
+    * such that a button can be set up for the user to request a location update */
 
 }

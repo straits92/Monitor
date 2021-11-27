@@ -8,7 +8,7 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Update;
 
-import com.example.monitor.models.Location;
+import com.example.monitor.models.MonitorLocation;
 
 import java.util.List;
 
@@ -16,20 +16,20 @@ import java.util.List;
 public interface LocationDao {
 
     @Insert
-    void insert(Location location);
+    void insert(MonitorLocation monitorLocation);
 
     @Update
-    void update(Location location);
+    void update(MonitorLocation monitorLocation);
 
     @Delete
-    void delete(Location location);
+    void delete(MonitorLocation monitorLocation);
 
     @Query("SELECT * FROM location_table ORDER BY id DESC") /* descending order */
-    LiveData<List<Location>> getLocationTable();
+    LiveData<List<MonitorLocation>> getLocationTable();
 
     @Query("DELETE FROM location_table")
     void deleteLocationTable();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertLocationList(List<Location> locationList);
+    void insertLocationList(List<MonitorLocation> monitorLocationList);
 }

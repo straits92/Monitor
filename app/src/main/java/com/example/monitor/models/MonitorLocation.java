@@ -4,7 +4,7 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
 @Entity(tableName = "location_table")
-public class Location {
+public class MonitorLocation {
 
     @PrimaryKey(autoGenerate = true)
     private int id;
@@ -15,7 +15,7 @@ public class Location {
     private String longitude;
     private boolean isGpsAvailable;
 
-    public Location(String location, String localizedName, String latitude, String longitude, boolean isGpsAvailable) {
+    public MonitorLocation(String location, String localizedName, String latitude, String longitude, boolean isGpsAvailable) {
         this.location = location;
         this.localizedName = localizedName;
         this.latitude = latitude;

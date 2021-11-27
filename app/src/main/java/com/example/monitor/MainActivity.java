@@ -1,5 +1,7 @@
 package com.example.monitor;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.Observer;
@@ -7,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.Manifest;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -15,12 +18,11 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.example.monitor.adapters.RecyclerWeatherAdapter;
-import com.example.monitor.models.Location;
+import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.util.ArrayList;
 import java.util.List;
 /* Monitor App: intended to fetch weather data from a weather station API,
 * fetch temperature (and potentially other) data from a home temperature
@@ -80,7 +82,12 @@ public class MainActivity extends AppCompatActivity {
         RecyclerWeatherAdapter weatherAdapter = new RecyclerWeatherAdapter();
         recyclerView.setAdapter(weatherAdapter);
 
-        /* is a location button adapter necessary if there's only one entry? SHOULDN'T BE */
+        /* maybe this permission is granted too slowly, and everything is instantiated
+        * with location defaulting, before the user can react. so maybe gps activity
+        * should only be triggered once the user permits. */
+        requestPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION);
+        requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+
 
         /* dummy action for simulating async addition of new data to LiveData */
         dummyFab = findViewById(R.id.floatingActionButton);
@@ -121,9 +128,9 @@ public class MainActivity extends AppCompatActivity {
         });
 
         /* update location button/display; not recyclerview */
-        temperatureViewModel.getLocationData().observe(this, new Observer<List<Location>>(){
+        temperatureViewModel.getLocationData().observe(this, new Observer<List<MonitorLocation>>(){
             @Override
-            public void onChanged(@Nullable List<Location> locations) {
+            public void onChanged(@Nullable List<MonitorLocation> monitorLocations) {
 
                 Log.d(TAG, "Data observed from LocationDatabase thru Weather Repository.");
                 Toast.makeText(MainActivity.this, "onChanged: location", Toast.LENGTH_SHORT).show();
@@ -139,4 +146,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void showProgressBar() { progressBar.setVisibility(View.VISIBLE);}
     private void hideProgressBar() { progressBar.setVisibility(View.INVISIBLE);}
+
+    private ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Permission is granted. Continue the action or workflow in your
+                    // app.
+                    Log.d(TAG, "GPS PERMISSION GRANTED BY USER: ");
+                } else {
+                    Log.d(TAG, "GPS PERMISSION DENIED BY USER: ");
+                    // Explain to the user that the feature is unavailable because the
+                    // features requires a permission that the user has denied. At the
+                    // same time, respect the user's decision. Don't link to system
+                    // settings in an effort to convince the user to change their
+                    // decision.
+                }
+            });
 }

@@ -11,12 +11,12 @@ import androidx.room.RoomDatabase;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.example.monitor.backgroundutil.ExecutorHelper;
-import com.example.monitor.models.Location;
+import com.example.monitor.models.MonitorLocation;
 
 import java.util.concurrent.ExecutorService;
 
 /* handled by weather repository, not its own repository */
-@Database(entities = {Location.class}, version = 1)
+@Database(entities = {MonitorLocation.class}, version = 1)
 public abstract class LocationDatabase extends RoomDatabase {
     private static final String TAG = "LocationDatabase:";
     private static LocationDatabase instance;
@@ -50,7 +50,16 @@ public abstract class LocationDatabase extends RoomDatabase {
 
             /* initially populate database here, on a bg thread */
             /* with the asynctask*/
-            new SetLocationBackgroundTask(instance).execute();
+//            new SetLocationBackgroundTask(instance).execute();
+
+            /* embedded default location is Belgrade */
+            String location = "298198";
+            String localizedName = "Belgrade";
+            String latitude = "44.8125";
+            String longitude = "20.4612";
+            boolean isGpsAvailable = false;
+            instance.locationDao().insert(new MonitorLocation(location, localizedName, latitude, longitude, isGpsAvailable));
+            Log.d(TAG, "Initial default location set as city: "+"Belgrade"+", code: "+"298198");
 
             /* with the callable is currently not working */
         }
@@ -72,8 +81,8 @@ public abstract class LocationDatabase extends RoomDatabase {
             String latitude = "44.8125";
             String longitude = "20.4612";
             boolean isGpsAvailable = false;
-            locationDao.insert(new Location(location, localizedName, latitude, longitude, isGpsAvailable));
-            Log.d(TAG, "Initial location set as "+"Belgrade"+" "+"298198");
+            locationDao.insert(new MonitorLocation(location, localizedName, latitude, longitude, isGpsAvailable));
+            Log.d(TAG, "Initial default location set as city: "+"Belgrade"+", code: "+"298198");
             return null;
         }
     }

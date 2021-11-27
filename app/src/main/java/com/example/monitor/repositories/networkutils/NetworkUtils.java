@@ -44,7 +44,7 @@ public class NetworkUtils {
             e.printStackTrace();
         }
 
-        Log.i(TAG,"BuildUrlForLocation: url: "+url);
+//        Log.i(TAG,"BuildUrlForLocation: url: "+url);
         return url;
     }
 
@@ -71,7 +71,7 @@ public class NetworkUtils {
             e.printStackTrace();
         }
 
-        Log.i(TAG,"BuildUrlForWeather: url: "+url);
+//        Log.i(TAG,"BuildUrlForWeather: url: "+url);
         return url;
     }
 

@@ -7,7 +7,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.example.monitor.models.Location;
+import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.WeatherRepository;
 
@@ -19,7 +19,7 @@ public class MainActivityViewModel extends AndroidViewModel {
     /* observable data */
     private final MutableLiveData<Boolean> isUpdating /*= new MutableLiveData<>()*/;
     private LiveData<List<Weather>> immutableWeatherDataEntries;
-    private LiveData<List<Location>> locationData;
+    private LiveData<List<MonitorLocation>> locationData;
 
     /* repository module with which the ViewModel communicates */
     private WeatherRepository weatherRepository;
@@ -51,7 +51,7 @@ public class MainActivityViewModel extends AndroidViewModel {
         return immutableWeatherDataEntries;
     }
 
-    public LiveData<List<Location>> getLocationData(){return locationData;};
+    public LiveData<List<MonitorLocation>> getLocationData(){return locationData;};
 
     public void insert(Weather weatherDataPoint) {
         isUpdating.setValue(true); /* may also be set false here or in worker thread if possible */

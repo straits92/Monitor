@@ -10,7 +10,7 @@ import com.example.monitor.databases.LocationDao;
 import com.example.monitor.databases.LocationDatabase;
 import com.example.monitor.databases.WeatherDao;
 import com.example.monitor.databases.WeatherDatabase;
-import com.example.monitor.models.Location;
+import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.backgroundutil.ExecutorHelper;
 import com.example.monitor.repositories.execmodel.RemoteDataFetchModel;
@@ -30,7 +30,7 @@ public class WeatherRepository {
     private WeatherDao weatherDao;
     private LocationDao locationDao;
     private LiveData<List<Weather>> weatherDataEntries;
-    private LiveData<List<Location>> locationData;
+    private LiveData<List<MonitorLocation>> locationData;
 
     /* has its own executor for single datapoint insertions, but should have
     * a method which inserts an entire list of data points at once too, in one thread */
@@ -55,14 +55,13 @@ public class WeatherRepository {
 
         isUpdating.setValue(false); /* initial value for weather list */
         singleExecutor = ExecutorHelper.getSingleThreadExecutorInstance();
-        Log.d(TAG, "Constructor: dummy data points to be inserted during database instantiation!");
 
         /* insert initial location data as Belgrade 298198; currently done within location database */
 //        locationDao.insert(new Location("298198", "Belgrade", null, null, false));
 
         /* Instantiate background execution model. Wrap its methods for use by ViewModel and thus
         * the MainActivity in case the user needs to trigger remote data fetching */
-        remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao);
+        remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application);
 
     }
 
@@ -72,7 +71,7 @@ public class WeatherRepository {
     }
 
     /* Room should also set this up? To be used in an observer, maybe by adapter? */
-    public LiveData<List<Location>> getLocationData() {return locationData;}
+    public LiveData<List<MonitorLocation>> getLocationData() {return locationData;}
 
     /* for the buffering object in MainActivity */
     public MutableLiveData<Boolean> getIsUpdating() {
