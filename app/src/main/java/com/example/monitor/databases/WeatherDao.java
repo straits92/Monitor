@@ -33,6 +33,12 @@ public interface WeatherDao {
     @Query("SELECT * FROM weather_table ORDER BY id DESC") /* descending order */
     LiveData<List<Weather>> getAllWeatherPoints();
 
+//    @Query("DELETE FROM hourly_weather_table")
+//    void deleteAllHourlyWeatherPoints();
+//
+//    @Query("SELECT * FROM hourly_weather_table ORDER BY id DESC") /* descending order */
+//    LiveData<List<Weather>> getAllHourlyWeatherPoints();
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertWeatherList(List<Weather> weatherList);
 

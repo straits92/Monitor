@@ -78,11 +78,10 @@ public abstract class WeatherDatabase extends RoomDatabase {
 
         @Override
         protected Void doInBackground(Void... voids) {
-            Log.d(TAG, "PopulateDbBackgroundTask bg thread: called !!!!!!!!!!!!!!!!!!");
-            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "0"));
-            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "1"));
-            Log.d(TAG, "PopulateDbBackgroundTask bg thread: dummy weather points inserted!!!!!!!!!!!!!!!!!!");
-
+            Log.d(TAG, "PopulateDbBackgroundTask bg thread: called !!!!!!!!!!!");
+//            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "0"));
+//            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "1"));
+            Log.d(TAG, "PopulateDbBackgroundTask bg thread: dummy weather points inserted!!!!!!!!!!");
             return null;
         }
     }
@@ -96,9 +95,8 @@ public abstract class WeatherDatabase extends RoomDatabase {
             public Void call() {
                 /* !!! weatherDao.insert() never executes here !!! */
                 Log.d(TAG, "from Callable bg thread: dummy weather points to be inserted...");
-                weatherDao.insert(new Weather("1", "CALLABLE_weatherdb", "0"));
-//                Log.d(TAG, "FROM INITIALIZED" +weatherDao.getAllWeatherPoints().getValue().get(0).getLink());
-                weatherDao.insert(new Weather("2", "CALLABLE_weatherdb", "0"));
+//                weatherDao.insert(new Weather("1", "CALLABLE_weatherdb", "0"));
+//                weatherDao.insert(new Weather("2", "CALLABLE_weatherdb", "0"));
                 Log.d(TAG, "from Callable bg thread: dummy weather points inserted!!!!!!!!!!!!!!!!!!");
                 return null;
             }

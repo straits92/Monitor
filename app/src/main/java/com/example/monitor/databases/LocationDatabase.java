@@ -1,6 +1,7 @@
 package com.example.monitor.databases;
 
 import android.content.Context;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -13,7 +14,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 import com.example.monitor.backgroundutil.ExecutorHelper;
 import com.example.monitor.models.MonitorLocation;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /* handled by weather repository, not its own repository */
 @Database(entities = {MonitorLocation.class}, version = 1)
@@ -34,7 +39,7 @@ public abstract class LocationDatabase extends RoomDatabase {
             instance = Room.databaseBuilder(context.getApplicationContext(),
                     LocationDatabase.class,"location_database")
                     .fallbackToDestructiveMigration()/* deletes previous version db content */
-                    .addCallback(roomCallback)/* call right after creating the instance for setup  */
+                    .addCallback(roomCallback)/* call right after creating the instance for setup,but in which thread  */
                     .build();
 
             Log.d(TAG, "getInstance: LocationDatabase instantiated!");
@@ -48,41 +53,39 @@ public abstract class LocationDatabase extends RoomDatabase {
         public void onCreate(@NonNull SupportSQLiteDatabase db) {
             super.onCreate(db);
 
-            /* initially populate database here, on a bg thread */
-            /* with the asynctask*/
-//            new SetLocationBackgroundTask(instance).execute();
-
-            /* embedded default location is Belgrade */
-            String location = "298198";
-            String localizedName = "Belgrade";
-            String latitude = "44.8125";
-            String longitude = "20.4612";
-            boolean isGpsAvailable = false;
-            instance.locationDao().insert(new MonitorLocation(location, localizedName, latitude, longitude, isGpsAvailable));
-            Log.d(TAG, "Initial default location set as city: "+"Belgrade"+", code: "+"298198");
+//            new PopulateLocationDbAsyncTask(instance).execute();
 
             /* with the callable is currently not working */
         }
     };
 
-    /* to be done asynchronously using android GPS functionality; currently uses hardcoded info */
-    private static class SetLocationBackgroundTask extends AsyncTask<Void, Void, Void> {
-        private LocationDao locationDao;
+    private static class PopulateLocationDbAsyncTask extends AsyncTask<Void, Void, Void> {
+        private LocationDao dao;
 
-        private SetLocationBackgroundTask(LocationDatabase db) {
-            locationDao = db.locationDao();
+        private PopulateLocationDbAsyncTask(LocationDatabase db) {
+            dao = db.locationDao();
         }
 
         @Override
         protected Void doInBackground(Void... voids) {
-            /* default values */
-            String location = "298198";
-            String localizedName = "Belgrade";
-            String latitude = "44.8125";
-            String longitude = "20.4612";
-            boolean isGpsAvailable = false;
-            locationDao.insert(new MonitorLocation(location, localizedName, latitude, longitude, isGpsAvailable));
-            Log.d(TAG, "Initial default location set as city: "+"Belgrade"+", code: "+"298198");
+
+            List<MonitorLocation> defaultMonitorLocationList = new ArrayList<>();
+            MonitorLocation defaultHomeLocation = new MonitorLocation("298198", "Belgrade",
+                    "44.8125", "20.4612", false, 0);
+            MonitorLocation defaultVariableLocation = new MonitorLocation("298486", "Novi Sad",
+                    "45.267136", "19.833549", false, 1);
+            defaultMonitorLocationList.add(0, defaultHomeLocation);
+            defaultMonitorLocationList.add(1, defaultVariableLocation);
+
+            Log.d(TAG, "locationDb: initial caching of default locations attempted here...");
+            dao.deleteLocationTable();
+            dao.insertLocationList(defaultMonitorLocationList);
+
+            List<MonitorLocation> locationList = dao.getLocationTable().getValue();
+
+            if (locationList == null) {
+                Log.d(TAG, "locationDb: fetched locationList is null...");
+            }
             return null;
         }
     }

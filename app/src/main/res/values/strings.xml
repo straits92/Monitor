@@ -6,4 +6,5 @@
     <string name="dataType2">Humidity (empty)</string>
     <string name="firstHeader">Location</string>
     <string name="describeFAB">dummy add value</string>
+    <string name="variableLocation">Var. Location</string>
 </resources>

@@ -29,6 +29,8 @@ public class NetworkUtils {
     private static final String PARAM_API_KEY = "apikey";
     private static final String PARAM_METRIC_KEY = "metric";
     private static final String PARAM_LOC = "q";
+    private static final String PARAM_DETAILS = "details";
+
 
     public static URL buildUrlForLocation(String latitude, String longitude) {
 
@@ -62,6 +64,7 @@ public class NetworkUtils {
         Uri builtUri = Uri.parse(combinedURL).buildUpon()
                 .appendQueryParameter(PARAM_API_KEY, API_KEY)
                 .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
+//                .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
                 .build();
 
         URL url = null;

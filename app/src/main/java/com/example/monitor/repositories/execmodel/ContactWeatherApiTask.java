@@ -9,11 +9,11 @@ import java.net.URL;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
-public class contactWeatherApiTask implements Callable<String> {
+public class ContactWeatherApiTask implements Callable<String> {
     private static final String TAG = "contactWeatherApiTask";
 
     private URL requestUrl;
-    public contactWeatherApiTask (URL requestUrl) {
+    public ContactWeatherApiTask(URL requestUrl) {
         this.requestUrl = requestUrl;
     }
 
