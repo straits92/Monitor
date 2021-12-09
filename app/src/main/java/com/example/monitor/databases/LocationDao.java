@@ -25,6 +25,7 @@ public interface LocationDao {
     @Delete
     void delete(MonitorLocation monitorLocation);
 
+    /* Dao wraps the List in the SQLite table into LiveData for ViewModel/MainActivity */
     @Query("SELECT * FROM location_table ORDER BY id DESC") /* descending order */
     LiveData<List<MonitorLocation>> getLocationTable();
 
@@ -33,4 +34,9 @@ public interface LocationDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertLocationList(List<MonitorLocation> monitorLocationList);
+
+    /* extract static data for use by Repository and lower components */
+    @Query("SELECT * FROM location_table ORDER BY id DESC") /* descending order */
+    List<MonitorLocation> getLocationTableNonLive();
+
 }

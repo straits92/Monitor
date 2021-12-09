@@ -29,7 +29,7 @@ public class ContactWeatherApiTask implements Callable<String> {
             response = NetworkUtils.getResponseFromHttpUrl(requestUrl);
             Log.i(TAG, "response from API: " + response);
         } catch (IOException e){
-            Log.i(TAG, "fetching failed");
+            Log.i(TAG, "fetching failed: potentially ran out of free API requests for the day");
             e.printStackTrace();
         }
 

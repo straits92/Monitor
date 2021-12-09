@@ -1,6 +1,7 @@
 package com.example.monitor.repositories.execmodel;
 
 import android.app.Application;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -17,6 +18,8 @@ import com.example.monitor.repositories.parseutils.ParseUtils;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -66,6 +69,7 @@ public class RemoteDataFetchModel {
     private static ExecutorService weatherExecutor;
     private static ExecutorService locationExecutor;
     private static ExecutorService cachingExecutor;
+    private static ExecutorService serviceExecutor;
     private static ScheduledExecutorService scheduledExecutor;
 
 
@@ -80,7 +84,7 @@ public class RemoteDataFetchModel {
             applicationFromRepository = application;
 
             /* define scheduling parameters in seconds */
-            Integer tillNextQuery = 60 * 60; // a minute
+            Integer tillNextQuery = 40; // a minute
             Integer howLongVisible = 60 * 60 * 24; // a day
             Integer howLongStored = howLongVisible * 7; // a week
 
@@ -89,19 +93,12 @@ public class RemoteDataFetchModel {
             weatherExecutor = ExecutorHelper.getSingleThreadExecutorInstance(); // weather network
             locationExecutor = ExecutorHelper.getSingleThreadExecutorInstance(); // location network, gps
             cachingExecutor = ExecutorHelper.getSingleThreadExecutorInstance(); // all caching into db
+            serviceExecutor = ExecutorHelper.getSingleThreadExecutorInstance(); // for user purposes
             scheduledExecutor = ExecutorHelper.getScheduledPool(); /* specify nr of threads? */
 
             // ----- startup tasks
 
-            /* Design note: attempting to have multiple locations in the location database, and
-             * to update them instead of delete / insert, relies on either knowing the exact
-             * primary key of the location entry to be updated, or the current value of the entry.
-             * since observe() should only be called at the activity level, observeForever() was used
-             * here, and the result was that even though a locationdb change was detected, the actual
-             * location list was still fetched as null. thus, the decision is to keep only one
-             * location entry at all times, and to tie to each Weather data point the location
-             * for which it was obtained.*/
-
+            /* location operations */
             /* (blocking) prep the default location data; clears the location database */
             defaultMonitorLocationList = new ArrayList<>();
             defaultHomeLocation = new MonitorLocation("298198", "Belgrade",
@@ -118,22 +115,33 @@ public class RemoteDataFetchModel {
             }
 
             /* (blocking) get GPS lat,lon from android. then, get location key from api. */
-            MonitorLocation fetchedLocation = getCurrentLocation(0);
+            MonitorLocation fetchedLocation = getCurrentLocation(0, defaultMonitorLocationList);
 
-            /* (non-blocking) add home location in database after default is set up; clears the location database */
+            /* (non-blocking) add home location in database after default is set up */
             cachingExecutor.submit(new CacheDataInDbsTask(fetchedLocation, locationDaoReference));
+
+//            ArrayList<String> gpsLatLon = getGpsLatLon();
+//            MonitorLocation fetchedMonitorLocation = null;
+//            if (gpsLatLon != null) {
+//                fetchedMonitorLocation = getDefinedLocation(0, gpsLatLon, defaultMonitorLocationList);
+//                cachingExecutor.submit(new CacheDataInDbsTask(fetchedMonitorLocation, locationDaoReference));
+//            }
+
+
 
             /* weather operations */
             /* (blocking) get initial forecast (type 12h) based on initial location */
             List<Weather> initialWeatherList = getInitialForecast(fetchedLocation);
 
-            /* then cache the weather here and erase old data in case of initial forecast; non-blocking */
-            cachingExecutor.submit(new CacheDataInDbsTask(initialWeatherList, weatherDaoReference, true));
-
+            /* (non-blocking) then cache the weather here and erase old data in case of initial forecast */
+            if (initialWeatherList != null) {
+                cachingExecutor.submit(new CacheDataInDbsTask(initialWeatherList, weatherDaoReference, true));
+            }
             // ----- end startup tasks
 
 
-            // ----- periodic tasks: require RxJava to operate on data in the background
+
+            // ----- periodic tasks: require RxJava(?) to operate on data in the background
 
             /* periodic request. pass: request frequency, data aging and visibility, deletion policy */
             setUpPeriodicWeatherQueries(tillNextQuery, howLongVisible, howLongStored); /* intervals in seconds */
@@ -143,28 +151,120 @@ public class RemoteDataFetchModel {
         return instance;
     }
 
-    
+    /* public method for user-prompted location update */
+    public static synchronized void updateLocationOnPrompt() {
+//        serviceExecutor.submit(new Runnable() {
+//            @Override
+//            public void run() {
+
+
+                /* (blocking) get GPS lat,lon from android. then, get location key from api. */
+                MonitorLocation fetchedLocation = getCurrentLocation(0, defaultMonitorLocationList);
+
+                /* (non-blocking) add home location in database after default is set up; clears the location database */
+                cachingExecutor.submit(new CacheDataInDbsTask(fetchedLocation, locationDaoReference));
+
+//                ArrayList<String> gpsLatLon = getGpsLatLon();
+//                MonitorLocation fetchedMonitorLocation = null;
+//                if (gpsLatLon != null) {
+//                    fetchedMonitorLocation = getDefinedLocation(0, gpsLatLon, defaultMonitorLocationList);
+//                    cachingExecutor.submit(new CacheDataInDbsTask(fetchedMonitorLocation, locationDaoReference));
+//                }
+
+
+//            }
+//        });
+    }
+
+    /* decoupling getCurrentLocation; GPS task */
+    public static synchronized ArrayList<String> getGpsLatLon() {
+        ArrayList<String> gpsLatLon = null;
+        Future<ArrayList<String>> gpsLatLonTask = locationExecutor.submit(new GetGpsTask(applicationFromRepository));
+        try {
+            Log.d(TAG, "getCurrentLocation: if this is causing a block, 'PASSED' will not appear");
+//            gpsLatLon = gpsLatLonTask.get(); // blocking
+            gpsLatLon = gpsLatLonTask.get(5000, TimeUnit.MILLISECONDS);
+            Log.d(TAG, "getCurrentLocation: PASSED");
+        } catch (TimeoutException t) {
+            Log.i(TAG, "getCurrentLocation() at GPS task: TimeoutException");
+            t.printStackTrace();
+        } catch (ExecutionException | InterruptedException ei) {
+            Log.i(TAG, "getCurrentLocation() at GPS task: other Exception");
+            ei.printStackTrace();
+        }
+
+        return gpsLatLon;
+    }
+
+    /* decoupling getCurrentLocation; accuweather task */
+    public static synchronized MonitorLocation getDefinedLocation(Integer locationType, ArrayList<String> gpsLatLon, List<MonitorLocation> defaultMonitorLocationList) {
+        String locationResponse;
+        URL locationUrl;
+        MonitorLocation fetchedMonitorLocation = defaultMonitorLocationList.get(locationType);
+
+        /* Accuweather API query to get actual location key */
+        locationUrl = NetworkUtils.buildUrlForLocation(gpsLatLon.get(0), gpsLatLon.get(1));
+        Future<String> initialLocationTask = locationExecutor.submit((Callable<String>) new ContactWeatherApiTask(locationUrl));
+        try {
+            locationResponse = initialLocationTask.get(4500, TimeUnit.MILLISECONDS);
+            Log.d(TAG, "getCurrentLocation: obtained location response from Accuweather");
+            fetchedMonitorLocation = ParseUtils.parseLocationJSON(locationResponse);
+            fetchedMonitorLocation.setGpsAvailable(true); // if fetched by gps
+            fetchedMonitorLocation.setLocationType(locationType);
+
+        } catch (TimeoutException t) {
+//            t.printStackTrace();
+            Log.d(TAG, "getCurrentLocation at accuweather query: Timeout; default location: "
+                    + defaultMonitorLocationList.get(locationType).getLocalizedName());
+//            return defaultMonitorLocationList.get(locationType);
+        } catch (ExecutionException | InterruptedException ei) {
+            ei.printStackTrace();
+            Log.d(TAG, "getCurrentLocation at accuweather query: other Exception; default location: "
+                    + defaultMonitorLocationList.get(locationType).getLocalizedName());
+//            return defaultMonitorLocationList.get(locationType);
+        }
+
+        return fetchedMonitorLocation;
+    }
+
+
     /* (blocking) wrapper method invoking gps task and accuweather location task */
     /* returns: location obtained via GPS, with accuweather code. Otherwise,
     * returns default location specified by locationType argument */
-    public static MonitorLocation getCurrentLocation(Integer locationType) {
+    public static synchronized MonitorLocation getCurrentLocation(Integer locationType, List<MonitorLocation> defaultMonitorLocationList) {
         String locationResponse;
         URL locationUrl;
-        MonitorLocation fetchedMonitorLocation;
-        boolean isFromGps = false;
-        ArrayList<String> gpsLatLon; // uninitiated
+        MonitorLocation fetchedMonitorLocation = defaultMonitorLocationList.get(locationType);
+        ArrayList<String> gpsLatLon;
 
-        /* may need to create default location object in case of invocation by higher components,
-        * or pass such an object to the function from the caller context */
+        /* Issue:
+        GPS blocking seems to delay the lat,lon return till after timeout when submitted as Runnable.
 
-        /* Android GPS blocking 2500ms for home location */
+        When submitted as Runnable without a specified timeout, it blocks indefinitely.
+
+        When done on main thread (no Runnable), it completes without issue.
+
+
+        So when a gps task is submitted to the locationExecutor, it is as if this worker thread
+        cannot proceed; times out; the flow of the serviceExecutor continues with getCurrentLocation
+        and the worker thread actually emits a side effect of printing out the correct lat,lon.
+        Is it the case that access to the locationDb blocks further execution?
+
+        as if the act of get() on the caller (nonmain) thread blocks the activity on the other worker
+        thread. And GPS needs the application context passed to it. Does it force the GPS functionality
+        to be done on the main thread?
+        */
         Future<ArrayList<String>> gpsLatLonTask = locationExecutor.submit(new GetGpsTask(applicationFromRepository));
         try {
-            gpsLatLon = gpsLatLonTask.get(2500, TimeUnit.MILLISECONDS);
-            if (gpsLatLon == null)
-                return defaultMonitorLocationList.get(locationType);            
+
+            Log.d(TAG, "getCurrentLocation: if this is causing a block, 'PASSED' will not appear");
+//            gpsLatLon = gpsLatLonTask.get(); // blocking
+            gpsLatLon = gpsLatLonTask.get(3000, TimeUnit.MILLISECONDS);
+            Log.d(TAG, "getCurrentLocation: PASSED");
+            if (gpsLatLon == null) {
+                return defaultMonitorLocationList.get(locationType);
+            }
             
-            isFromGps = true; /* set at successful return from gps task */
         } catch (TimeoutException t) {
             Log.i(TAG, "getCurrentLocation() at GPS task: TimeoutException; default location: "
                     + defaultMonitorLocationList.get(locationType).getLocalizedName());
@@ -176,31 +276,30 @@ public class RemoteDataFetchModel {
             return defaultMonitorLocationList.get(locationType);
         }
 
-        /* Accuweather API query */
+        Log.d(TAG, "getCurrentLocation: after gps task; lat: "+gpsLatLon.get(0)+" lon:"+gpsLatLon.get(1));
+
+        /* Accuweather API query to get actual location key */
         locationUrl = NetworkUtils.buildUrlForLocation(gpsLatLon.get(0), gpsLatLon.get(1));
         Future<String> initialLocationTask = locationExecutor.submit((Callable<String>) new ContactWeatherApiTask(locationUrl));
         try {
             locationResponse = initialLocationTask.get(4500, TimeUnit.MILLISECONDS);
             Log.d(TAG, "getCurrentLocation: obtained location response from Accuweather");
-
-            /* parse locationResponse to get the actual location key */
             fetchedMonitorLocation = ParseUtils.parseLocationJSON(locationResponse);
-            fetchedMonitorLocation.setGpsAvailable(isFromGps); // if fetched by gps
+            fetchedMonitorLocation.setGpsAvailable(true); // if fetched by gps
             fetchedMonitorLocation.setLocationType(locationType);
 
         } catch (TimeoutException t) {
 //            t.printStackTrace();
             Log.d(TAG, "getCurrentLocation at accuweather query: Timeout; default location: "
                     + defaultMonitorLocationList.get(locationType).getLocalizedName());
-            return defaultMonitorLocationList.get(locationType);
+//            return defaultMonitorLocationList.get(locationType);
         } catch (ExecutionException | InterruptedException ei) {
 //            ei.printStackTrace();
             Log.d(TAG, "getCurrentLocation at accuweather query: other Exception; default location: "
                     + defaultMonitorLocationList.get(locationType).getLocalizedName());
-            return defaultMonitorLocationList.get(locationType);
+//            return defaultMonitorLocationList.get(locationType);
         }
 
-        /* return location object for further use by weather url */
         return fetchedMonitorLocation;
     }
 
@@ -214,7 +313,7 @@ public class RemoteDataFetchModel {
         Future<String> initialWeatherTask = weatherExecutor
                 .submit((Callable<String>) new ContactWeatherApiTask(twelveHourWeatherUrl));
         try {
-            weatherResponse = initialWeatherTask.get(2000, TimeUnit.MILLISECONDS);
+            weatherResponse = initialWeatherTask.get(5000, TimeUnit.MILLISECONDS);
         } catch (TimeoutException t) {
             Log.d(TAG, "getInitialForecast: timeout, initial forecast not obtained ");
 //            t.printStackTrace();
@@ -224,8 +323,6 @@ public class RemoteDataFetchModel {
             e.printStackTrace();
             return null;
         }
-
-        /* parse the JSON response into the List structure needed for the database */
         weatherList = ParseUtils.parseWeatherJSON(weatherResponse);
 
         /* go through point(s) in the list and set initial analytics */
@@ -253,11 +350,21 @@ public class RemoteDataFetchModel {
 
     private static void maintainWeatherDatabase(Integer howLongVisible, Integer howLongStored) {
 
-        // get current system time
+        // get current system time; try using routines before, after, compareTo another date,
+        // to see if it is over 24 hours ago, or over a week ago; howLongVisible, howLongStored
+        Date currentDate = new Date(System.currentTimeMillis());
+        Log.d(TAG, "maintainWeatherDatabase: currentDate:" +currentDate.toString()+" And its current time "+System.currentTimeMillis());
 
-        // compare present time with each point's time
+        // get entire weather list from database
+        List<Weather> weatherList = weatherDaoReference.getAllWeatherPointsNonLive();
 
-        // update its persistence based on the comparison
+        // compare present time with each point's time and modify its persistence only
+        // examine each data point, extract its time, formulate Date object, compare to current
+
+        // store the weather list back into the database
+        // OR update each weather data point by mirroring each extracted point's ID. is it necessary at all?
+        // wouldn't it just have the same ID since extracted from the database?
+
 
     }
 
@@ -278,18 +385,19 @@ public class RemoteDataFetchModel {
                 Future<MonitorLocation> task = locationExecutor.submit(new Callable<MonitorLocation>() {
                     @Override
                     public MonitorLocation call() throws Exception {
-                        Log.d(TAG, "query location database for cached location");
+                        Log.d(TAG, "setUpPeriodicWeatherQueries: query location database for cached location");
 
-                        // can this obtain the location from the database, or is some live data observer needed?
                         // apparently if "block until there is a value" is needed, RxJava should be used, to observe bg thread
-                        List<MonitorLocation> locationList = locationDaoReference.getLocationTable().getValue();
+                        List<MonitorLocation> locationListNonLive = locationDaoReference.getLocationTableNonLive();
 
-                        if (locationList == null){
-                            Log.d(TAG, "FATAL: setUpPeriodicWeatherQueries: querying locationDb returns null.");
+                        if (locationListNonLive != null){
+                            Log.d(TAG, "setUpPeriodicWeatherQueries: locationListNonLive: " +locationListNonLive.get(0).getLocalizedName());
+
+                        } else {
+                            Log.d(TAG, "FATAL: setUpPeriodicWeatherQueries: querying locationDb with non-LiveData method does not return an entry");
+                            return defaultMonitorLocationList.get(0);
                         }
-                        MonitorLocation monitorLocation = locationList.get(0);
-                        return monitorLocation;
-
+                        return locationListNonLive.get(0);
                     }
                 });
 
@@ -297,10 +405,12 @@ public class RemoteDataFetchModel {
                 try {
                     fetchedLocation = task.get();
                 } catch (ExecutionException | InterruptedException e) {
-                    Log.d(TAG, "setUpPeriodicWeatherQueries: run: location not fetched from database. default to "
+                    Log.d(TAG, "setUpPeriodicWeatherQueries: location not fetched from database. default to "
                             + defaultMonitorLocationList.get(0).getLocalizedName());
                     e.printStackTrace();
                 }
+
+
 
                 /* forecastType: 0, 12hour; 1, 1hour. */
                 URL hourlyWeatherUrl = NetworkUtils.buildUrlForWeather(1, fetchedLocation.getLocation());
@@ -315,8 +425,6 @@ public class RemoteDataFetchModel {
                     e.printStackTrace();
                     return;
                 }
-
-                // parse the eventual response from JSON objects to a List structure
                 hourlyWeatherList = ParseUtils.parseWeatherJSON(hourlyWeatherResponse);
 
                 // set the analytics
@@ -366,6 +474,40 @@ public class RemoteDataFetchModel {
 
         /* set up a task for querying the raspberry sensor */
 
+
+
+        /*  for stackoverflow */
+        // schedule an hourly task
+//        scheduledExecutor.scheduleAtFixedRate(new Runnable() {
+//            @Override
+//            public void run() {
+//
+//                // other tasks...
+//
+//                // get data from database via Dao
+//                Future<List<Weather>> task = weatherExecutor.submit(new Callable<List<Weather>>() {
+//                    @Override
+//                    public List<Weather> call() throws Exception {
+//                        List<Weather> weatherList = weatherDaoReference.getAllWeatherPoints().getValue();
+//                        if (weatherList == null){
+//                            Log.d(TAG, "FATAL: no data fetched for processing");
+//                        }
+//                        return weatherList;
+//                    }
+//                });
+//
+//                // block until location from database is fetched
+//                try {
+//                    fetchedWeatherList = task.get();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//
+//                // do some data processing with the List<Weather> ...
+//
+//            }
+//        }, initialDelay, tillNextQuery, TimeUnit.SECONDS);
+
     }
 
     /* intended to be called on main thread, in activity? */
@@ -387,10 +529,5 @@ public class RemoteDataFetchModel {
     }
 
 
-
-    /* provide method that exposes GPS functionality to parent architecture components,
-    * such that a button can be set up for the user to request a location update. there
-    * could be multiple buttons for different "types" of location; a home location button
-    * would specifically introduce a location entry with a "type" of home */
 
 }

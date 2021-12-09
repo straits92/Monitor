@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public class CacheDataInDbsTask implements Callable<String> {
-    private static final String TAG = "cachingLocationOrWeatherDataTask";
+    private static final String TAG = "CacheDataInDbsTask";
 
     private List<MonitorLocation> monitorLocationList = null;
     private LocationDao locationDaoReference = null;
@@ -24,10 +24,14 @@ public class CacheDataInDbsTask implements Callable<String> {
     private WeatherDao weatherDaoReference = null;
     private boolean shouldClearWeatherCache = false;
 
+    /* constructors */
     public CacheDataInDbsTask(MonitorLocation fetchedLocation, LocationDao locationDaoReference) {
+        Log.d(TAG, "CacheDataInDbsTask: task instantiated with location");
         this.location = fetchedLocation;
         this.locationDaoReference = locationDaoReference;
     }
+
+
 
     public CacheDataInDbsTask(List<Weather> weatherList, WeatherDao weatherDaoReference, boolean shouldClearWeatherCache) {
         this.shouldClearWeatherCache = shouldClearWeatherCache;
@@ -42,9 +46,14 @@ public class CacheDataInDbsTask implements Callable<String> {
     }
 
 
-    public synchronized void cacheLocationData(List<MonitorLocation> monitorLocationList) {
-        locationDaoReference.deleteLocationTable();
-        locationDaoReference.insertLocationList(monitorLocationList);
+    /* caching routines */
+    public synchronized void cacheLocationData(/*MonitorLocation locationEntry*/) {
+
+        List<MonitorLocation> tempList = locationDaoReference.getLocationTableNonLive();
+        Log.d(TAG, "cacheLocationData: attempt to UPDATE location as opposed to  delete+insert");
+        location.setId(tempList.get(0).getId());
+        locationDaoReference.update(location);
+
     }
 
     public synchronized void cacheWeatherDataList(List<Weather> weatherList) {
@@ -63,25 +72,40 @@ public class CacheDataInDbsTask implements Callable<String> {
         weatherDaoReference.insert(weatherPoint);
     }
 
+
+
+    /* overridden call method for submitting task object to executor */
     @SuppressLint("LongLogTag")
     @Override
     public String call() throws Exception {
 
         if (location != null) {
-            Log.d(TAG, "Location data updating...");
+            Log.d(TAG, "call: location provided, attempt to cache it");
+            List<MonitorLocation> listReferenceNonLive = locationDaoReference.getLocationTableNonLive();
 
-            List<MonitorLocation> listReference = locationDaoReference.getLocationTable().getValue();
-            if (listReference == null) {
-                Log.d(TAG, "Fetched list from location db is null again!");
+            /* update logic intended to handle a 1-entry location list */
+            if (listReferenceNonLive != null && listReferenceNonLive.size() > 0) {
+                if (listReferenceNonLive.get(0).getLocation() != location.getLocation()) {
+                    cacheLocationData(/*location*/);
+                } else {
+                    return null;
+                }
+            } else {
+                Log.d(TAG, "cacheLocationData: getLocationTableNonLive() returned null, do delete+insert");
+                if (this.monitorLocationList == null) {
+                    this.monitorLocationList = new ArrayList<>();
+                    this.monitorLocationList.add(location);
+                }
+                locationDaoReference.deleteLocationTable();
+                locationDaoReference.insertLocationList(monitorLocationList);
             }
 
-            List<MonitorLocation> listCopy = new ArrayList<>();
-            listCopy.add(location.getLocationType(), location);
-            cacheLocationData(listCopy);
             Log.d(TAG, "Location data should be updated now.");
-
             return null;
         }
+
+
+
 
         if (weatherList != null) {
             cacheWeatherDataList(weatherList);

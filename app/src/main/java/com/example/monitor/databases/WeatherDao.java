@@ -33,6 +33,9 @@ public interface WeatherDao {
     @Query("SELECT * FROM weather_table ORDER BY id DESC") /* descending order */
     LiveData<List<Weather>> getAllWeatherPoints();
 
+    @Query("SELECT * FROM weather_table ORDER BY id DESC") /* descending order */
+    List<Weather> getAllWeatherPointsNonLive();
+
 //    @Query("DELETE FROM hourly_weather_table")
 //    void deleteAllHourlyWeatherPoints();
 //

@@ -104,7 +104,8 @@ public class MainActivity extends AppCompatActivity {
         hideProgressBar();
 
 
-        /* ViewModel scoped to lifecycle of this activity; androidOS destroys it when finished */
+        /* initialize ViewModel; ViewModel scoped to lifecycle of this activity;
+        * androidOS destroys it when finished */
         temperatureViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
         /* observe() is a livedata method, activity gets passed to it. onChanged is triggered
@@ -169,6 +170,14 @@ public class MainActivity extends AppCompatActivity {
         });
 
         /* set up onClick for location buttons; should run GPS just for the location tied to the button */
+        homeLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "onClick: fetch current location at user prompt.");
+                temperatureViewModel.updateLocationOnPrompt();
+                Log.d(TAG, "onClick: after attempting to invoke temperatureViewModel.updateLocationOnPrompt()");
+            }
+        });
 
 
         Log.d(TAG, "onCreate: started.");
@@ -177,6 +186,9 @@ public class MainActivity extends AppCompatActivity {
     private void showProgressBar() { progressBar.setVisibility(View.VISIBLE);}
     private void hideProgressBar() { progressBar.setVisibility(View.INVISIBLE);}
 
+    
+    
+    /* GPS permissions */
     private ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {

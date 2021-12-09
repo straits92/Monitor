@@ -24,16 +24,20 @@ public class MainActivityViewModel extends AndroidViewModel {
     /* repository module with which the ViewModel communicates */
     private WeatherRepository weatherRepository;
 
-    /* no references to activity in ViewModel; needs application context to pass to repository,
-    * needed to instantiate database  */
+    /* there should be no references to activity in ViewModel;
+    but needs application context to pass to repository, needed to instantiate database  */
     public MainActivityViewModel(@NonNull Application application) {
         super(application);
 //        if (mutableWeatherDataEntries != null) {
 //            return;
 //        }
 
-        /* get weather repository object; alternative implement via getInstance? */
+        /* weather repository object shouldn't need reference to UI? */
         weatherRepository = new WeatherRepository(application);
+
+        /* repository passes its LiveData to ViewModel, which passes it to MainActivity. But
+        * would the ViewModel or MainActivity see any changes done on the database if those are not
+        * done in terms of a LiveData object? */
         immutableWeatherDataEntries = weatherRepository.getWeatherDataEntries();
         locationData = weatherRepository.getLocationData();
         isUpdating = weatherRepository.getIsUpdating();
@@ -41,6 +45,8 @@ public class MainActivityViewModel extends AndroidViewModel {
         /* here the repository can expose controls to the RemoteDataFetchModel
         * which it initiated */
     }
+
+    /* convert RxJava-maintained data from the repository, into LiveData (using LiveDataReactiveStreams?) */
 
     public LiveData<Boolean> getIsUpdating() {
         return isUpdating;
@@ -56,6 +62,10 @@ public class MainActivityViewModel extends AndroidViewModel {
     public void insert(Weather weatherDataPoint) {
         isUpdating.setValue(true); /* may also be set false here or in worker thread if possible */
         weatherRepository.insert(weatherDataPoint);
+    }
+
+    public void updateLocationOnPrompt() {
+        weatherRepository.updateLocationOnPrompt();
     }
 
 }

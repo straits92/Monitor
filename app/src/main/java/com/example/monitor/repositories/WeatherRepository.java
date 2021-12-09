@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+/* single source of truth for weather data */
 /* The repository should decide when to fetch data from which source. The fetching of data is NOT
 nominally done at the user's prompt. It is intended as a periodic background task. It should not
 primarily be triggered by the MainActivity, but such functionality may be wrapped for it. As such,
@@ -56,11 +57,9 @@ public class WeatherRepository {
         isUpdating.setValue(false); /* initial value for weather list */
         singleExecutor = ExecutorHelper.getSingleThreadExecutorInstance();
 
-        /* insert initial location data as Belgrade 298198; currently done within location database */
-//        locationDao.insert(new Location("298198", "Belgrade", null, null, false));
-
         /* Instantiate background execution model. Wrap its methods for use by ViewModel and thus
-        * the MainActivity in case the user needs to trigger remote data fetching */
+        * the MainActivity in case the user needs to trigger remote data fetching. It needs
+        * a reference to application in order to invoke GPS tasks */
         remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application);
 
     }
@@ -87,15 +86,9 @@ public class WeatherRepository {
         // operate on some live data
     }
 
-
-
-
-
-
-
-
-
-
+    public void updateLocationOnPrompt() {
+        remoteModel.updateLocationOnPrompt();
+    }
 
 
     /* METHODS USED IN VIEWMODEL */
@@ -110,18 +103,7 @@ public class WeatherRepository {
         }
     }
 
-    /* take in a list, or just an ArrayList of points and iterate? */
-//    public void insertList(List<Weather> weatherDataPoints){
-//        try {
-//            this.insertWeatherList(weatherDataPoints);
-//        } catch (ExecutionException | InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
-    /* boilerplate callables wrapping Dao method calls, to be submitted to executor  */
-
-    /* invoked in MainActivity via Fab button; works here but not in the abstract database */
+    /* DUMMY CODE: invoked in MainActivity via Fab button; works here but not in the abstract database */
     public synchronized Void insertWeatherDataPoint(final Weather weatherEntity)
             throws ExecutionException, InterruptedException {
 
@@ -142,6 +124,22 @@ public class WeatherRepository {
         /* blocking operation waits for the task to complete; not needed with live data? */
         return task.get();
     }
+
+
+
+
+
+
+
+    /* take in a list, or just an ArrayList of points and iterate? */
+//    public void insertList(List<Weather> weatherDataPoints){
+//        try {
+//            this.insertWeatherList(weatherDataPoints);
+//        } catch (ExecutionException | InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//    }
+
 
     /* entirely unnecessary for the ViewModel? */
 //    public synchronized Void insertWeatherList(List<Weather> weatherList)

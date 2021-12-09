@@ -34,25 +34,32 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
     ArrayList<String> passedLatLon;
 
     /* receive the lat,lon structure and change it, then return. */
-    public GetGpsTask(Application application/*, ArrayList<String> gpsLatLon*/) {
+    public GetGpsTask(Application application) {
         applicationFromModel = application;
-        passedLatLon = new ArrayList<>()/*gpsLatLon*/;
+        passedLatLon = new ArrayList<>();
         locationManager = (LocationManager) applicationFromModel.getSystemService(Context.LOCATION_SERVICE);
 
     }
 
     @Override
     public ArrayList<String> call() throws Exception {
+        /* include this method call in order to run a GPS query on a worker thread */
+        Log.d(TAG, "call: right before Looper.prepare() should be called");
+        Looper.prepare();
+
         if (ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 /*|| ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED*/) {
             Log.d(TAG, "call: no permission to access GPS data, return null");
-            return null /*passedLatLon*/;
+            return null;
         }
 
+        Log.d(TAG, "call: right before getlastKnownLocation() is called");
         Location gps_location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+//        Looper.loop();
+
 //        network_loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        if(gps_location != null && gps_location.getTime() > Calendar.getInstance().getTimeInMillis() - 120000) { // 2 * 60 * 1000, define age of loc data
+        if(gps_location != null && gps_location.getTime() > Calendar.getInstance().getTimeInMillis() - 120000) { // 2 * 60 * 1000, define age of loc data, 2 minutes?
             final_location = gps_location;
             latitude = final_location.getLatitude();
             longitude = final_location.getLongitude();
@@ -66,8 +73,8 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
             Can't create handler inside thread Thread[pool-2-thread-1,5,main] that has
             not called Looper.prepare()
              */
-            Looper.prepare();
-            Log.d(TAG, "last known location returns null; need to requestLocationUpdates, but current behaviour is ambiguous.");
+//            Looper.prepare();
+            Log.d(TAG, "last known location returns null; need to requestLocationUpdates, but current behaviour is ambiguous, so the caller just defaults.");
 
             /* trigger LocationListener's callback onLocationChanged if location changed by >5km */
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 5000, this);
@@ -83,10 +90,10 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
     @Override
     public void onLocationChanged(@NonNull Location location) {
         if (location != null) {
-            Log.v("Location Changed", location.getLatitude() + " and " + location.getLongitude());
+            Log.v("onLocationChanged:", ">>>>>callback with lat: "+location.getLatitude() + " lon: " + location.getLongitude()+">>>>>>>");
 
-//            passedLatLon.add(0, latitude.toString());
-//            passedLatLon.add(1, longitude.toString());
+            passedLatLon.add(0, latitude.toString());
+            passedLatLon.add(1, longitude.toString());
 
             locationManager.removeUpdates(this);
         }
