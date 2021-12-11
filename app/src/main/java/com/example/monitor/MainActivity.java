@@ -104,8 +104,8 @@ public class MainActivity extends AppCompatActivity {
         hideProgressBar();
 
 
-        /* initialize ViewModel; ViewModel scoped to lifecycle of this activity;
-        * androidOS destroys it when finished */
+        /* initialize ViewModel; ViewModel scoped to lifecycle of this activity; androidOS destroys
+        * it when finished */
         temperatureViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
         /* observe() is a livedata method, activity gets passed to it. onChanged is triggered
@@ -140,7 +140,6 @@ public class MainActivity extends AppCompatActivity {
         /* end dummy action */
 
         /* update home location button/display; not recyclerview */
-        // this should display the location by which initial fetching was done
         temperatureViewModel.getLocationData().observe(this, new Observer<List<MonitorLocation>>(){
             @Override
             public void onChanged(@Nullable List<MonitorLocation> monitorLocations) {
@@ -175,7 +174,6 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Log.d(TAG, "onClick: fetch current location at user prompt.");
                 temperatureViewModel.updateLocationOnPrompt();
-                Log.d(TAG, "onClick: after attempting to invoke temperatureViewModel.updateLocationOnPrompt()");
             }
         });
 
@@ -186,22 +184,14 @@ public class MainActivity extends AppCompatActivity {
     private void showProgressBar() { progressBar.setVisibility(View.VISIBLE);}
     private void hideProgressBar() { progressBar.setVisibility(View.INVISIBLE);}
 
-    
-    
+
     /* GPS permissions */
     private ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    // Permission is granted. Continue the action or workflow in your
-                    // app.
-                    Log.d(TAG, "GPS PERMISSION GRANTED BY USER: ");
+                    Log.d(TAG, "GPS PERMISSION GRANTED BY USER. App behaviour is normal. ");
                 } else {
-                    Log.d(TAG, "GPS PERMISSION DENIED BY USER: ");
-                    // Explain to the user that the feature is unavailable because the
-                    // features requires a permission that the user has denied. At the
-                    // same time, respect the user's decision. Don't link to system
-                    // settings in an effort to convince the user to change their
-                    // decision.
+                    Log.d(TAG, "GPS PERMISSION DENIED BY USER. Explain consequences and handle display.");
                 }
             });
 }

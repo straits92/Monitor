@@ -24,8 +24,8 @@ public class MainActivityViewModel extends AndroidViewModel {
     /* repository module with which the ViewModel communicates */
     private WeatherRepository weatherRepository;
 
-    /* there should be no references to activity in ViewModel;
-    but needs application context to pass to repository, needed to instantiate database  */
+    /* there should be no references to activity in ViewModel; but application context needed to
+    * pass to repository, needed to instantiate database  */
     public MainActivityViewModel(@NonNull Application application) {
         super(application);
 //        if (mutableWeatherDataEntries != null) {
@@ -35,15 +35,11 @@ public class MainActivityViewModel extends AndroidViewModel {
         /* weather repository object shouldn't need reference to UI? */
         weatherRepository = new WeatherRepository(application);
 
-        /* repository passes its LiveData to ViewModel, which passes it to MainActivity. But
-        * would the ViewModel or MainActivity see any changes done on the database if those are not
-        * done in terms of a LiveData object? */
+        /* LiveData trip: Database -> Repository -> ViewModel -> MainActivity  */
         immutableWeatherDataEntries = weatherRepository.getWeatherDataEntries();
         locationData = weatherRepository.getLocationData();
         isUpdating = weatherRepository.getIsUpdating();
 
-        /* here the repository can expose controls to the RemoteDataFetchModel
-        * which it initiated */
     }
 
     /* convert RxJava-maintained data from the repository, into LiveData (using LiveDataReactiveStreams?) */

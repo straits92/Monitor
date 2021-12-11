@@ -18,14 +18,10 @@ public class ContactWeatherApiTask implements Callable<String> {
     }
 
     @Override
-    public String call() /*throws ExecutionException, InterruptedException*/ {
+    public String call() {
         String response = null;
-
-        /* get String response from remote: requests for location and weather data are decoupled */
         Log.i(TAG, "URL requested: "+requestUrl.toString());
         try {
-            /* the count of requests should reset to 0 every 24 hours */
-            // requestCounts++;
             response = NetworkUtils.getResponseFromHttpUrl(requestUrl);
             Log.i(TAG, "response from API: " + response);
         } catch (IOException e){

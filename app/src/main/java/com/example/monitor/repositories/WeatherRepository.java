@@ -33,9 +33,8 @@ public class WeatherRepository {
     private LiveData<List<Weather>> weatherDataEntries;
     private LiveData<List<MonitorLocation>> locationData;
 
-    /* has its own executor for single datapoint insertions, but should have
-    * a method which inserts an entire list of data points at once too, in one thread */
-    private static ExecutorService singleExecutor;
+    /* has its own executor for single datapoint insertions via dummy fab */
+    private static ExecutorService executor;
 
     /* for fetching remote data via managed, scheduled execution */
     private RemoteDataFetchModel remoteModel;
@@ -55,11 +54,9 @@ public class WeatherRepository {
         locationData = locationDao.getLocationTable();
 
         isUpdating.setValue(false); /* initial value for weather list */
-        singleExecutor = ExecutorHelper.getSingleThreadExecutorInstance();
+        executor = ExecutorHelper.getDatabaseExecutorInstance();
 
-        /* Instantiate background execution model. Wrap its methods for use by ViewModel and thus
-        * the MainActivity in case the user needs to trigger remote data fetching. It needs
-        * a reference to application in order to invoke GPS tasks */
+        /* Instantiate background execution model. Need a reference to application for GPS tasks */
         remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application);
 
     }
@@ -77,7 +74,8 @@ public class WeatherRepository {
         return isUpdating;
     }
 
-    /* wrapper interface for remote data, from remoteModel; both weather API and the Pi-sensor */
+
+    /* wrapper interfaces for remote data, from remoteModel; both weather API and the Pi-sensor */
     public void requestDataFromWeatherApi() {
         // operate on some live data
     }
@@ -92,7 +90,6 @@ public class WeatherRepository {
 
 
     /* METHODS USED IN VIEWMODEL */
-
     /* Database operation wrappers calling Dao methods in bg threads.
     * Thread tasks should be private static classes, so that they don't reference the repository. */
     public void insert(Weather weatherDataPoint) {
@@ -107,10 +104,7 @@ public class WeatherRepository {
     public synchronized Void insertWeatherDataPoint(final Weather weatherEntity)
             throws ExecutionException, InterruptedException {
 
-        /* executor.submit(task) returns a placeholder variable of type Future<> */
-        Future<Void> task = singleExecutor.submit(new Callable<Void>() {
-
-            /* executor runs this callable */
+        Future<Void> task = executor.submit(new Callable<Void>() {
             @Override
             public Void call() {
                 Log.d(TAG, "call: insertWeatherDataPoint: inserted");
@@ -121,39 +115,7 @@ public class WeatherRepository {
             }
         });
 
-        /* blocking operation waits for the task to complete; not needed with live data? */
         return task.get();
     }
-
-
-
-
-
-
-
-    /* take in a list, or just an ArrayList of points and iterate? */
-//    public void insertList(List<Weather> weatherDataPoints){
-//        try {
-//            this.insertWeatherList(weatherDataPoints);
-//        } catch (ExecutionException | InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
-
-    /* entirely unnecessary for the ViewModel? */
-//    public synchronized Void insertWeatherList(List<Weather> weatherList)
-//            throws ExecutionException, InterruptedException {
-//        Future<Void> task = singleExecutor.submit(new Callable<Void>() {
-//            @Override
-//            public Void call() {
-//                Log.d(TAG, "call: insertWeatherList: inserted");
-//                weatherDao.insertWeatherList(weatherList);
-////                isUpdating.postValue(false);
-//                return null;
-//            }
-//        });
-//        return task.get();
-//    }
 
 }

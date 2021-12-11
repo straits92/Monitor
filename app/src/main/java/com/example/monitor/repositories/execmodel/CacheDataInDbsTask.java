@@ -24,14 +24,12 @@ public class CacheDataInDbsTask implements Callable<String> {
     private WeatherDao weatherDaoReference = null;
     private boolean shouldClearWeatherCache = false;
 
-    /* constructors */
+    /* constructors for caching of different data types */
     public CacheDataInDbsTask(MonitorLocation fetchedLocation, LocationDao locationDaoReference) {
         Log.d(TAG, "CacheDataInDbsTask: task instantiated with location");
         this.location = fetchedLocation;
         this.locationDaoReference = locationDaoReference;
     }
-
-
 
     public CacheDataInDbsTask(List<Weather> weatherList, WeatherDao weatherDaoReference, boolean shouldClearWeatherCache) {
         this.shouldClearWeatherCache = shouldClearWeatherCache;
@@ -44,13 +42,11 @@ public class CacheDataInDbsTask implements Callable<String> {
         this.weatherDataPoint = weatherDataPoint;
         this.weatherDaoReference = weatherDaoReference;
     }
-
-
-    /* caching routines */
+    
+    /* ... and their corresponding caching routines */
     public synchronized void cacheLocationData(/*MonitorLocation locationEntry*/) {
 
         List<MonitorLocation> tempList = locationDaoReference.getLocationTableNonLive();
-        Log.d(TAG, "cacheLocationData: attempt to UPDATE location as opposed to  delete+insert");
         location.setId(tempList.get(0).getId());
         locationDaoReference.update(location);
 
@@ -68,11 +64,8 @@ public class CacheDataInDbsTask implements Callable<String> {
             weatherDaoReference.deleteAllWeatherPoints();
         }
 
-        // does it insert as last, most recent?
         weatherDaoReference.insert(weatherPoint);
     }
-
-
 
     /* overridden call method for submitting task object to executor */
     @SuppressLint("LongLogTag")
@@ -80,7 +73,7 @@ public class CacheDataInDbsTask implements Callable<String> {
     public String call() throws Exception {
 
         if (location != null) {
-            Log.d(TAG, "call: location provided, attempt to cache it");
+            Log.d(TAG, "call: location provided, to be cached");
             List<MonitorLocation> listReferenceNonLive = locationDaoReference.getLocationTableNonLive();
 
             /* update logic intended to handle a 1-entry location list */
@@ -103,17 +96,15 @@ public class CacheDataInDbsTask implements Callable<String> {
             Log.d(TAG, "Location data should be updated now.");
             return null;
         }
-
-
-
-
+        
         if (weatherList != null) {
+            Log.d(TAG, "call: List of weather data to be cached.");
             cacheWeatherDataList(weatherList);
-            Log.i(TAG, "Weather data cached.");
             return null;
         }
 
         if (weatherDataPoint != null){
+            Log.d(TAG, "call: single weather data point to be cached.");
             cacheWeatherDataPoint(weatherDataPoint);
         }
 

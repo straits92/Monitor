@@ -19,12 +19,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.concurrent.Callable;
 
-/* it is important that this task only runs on initiation, and at user button push.
- * because the application context may not exist for potential gps fetching in the
- * background, and this is needed to confirm permissions and potentially listen
- * for GPS update changes onClick. */
+/* task only runs on initiation, and at user button push. the application context may not exist for
+* potential gps fetching in the background, but is needed to confirm permissions and to listen for
+* GPS update changes onClick. */
 public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener {
-    private static final String TAG = "getGpsTask";
+    private static final String TAG = "GetGpsTask";
     private static Application applicationFromModel;
     private LocationManager locationManager;
 
@@ -38,14 +37,15 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
         applicationFromModel = application;
         passedLatLon = new ArrayList<>();
         locationManager = (LocationManager) applicationFromModel.getSystemService(Context.LOCATION_SERVICE);
-
     }
 
     @Override
     public ArrayList<String> call() throws Exception {
-        /* include this method call in order to run a GPS query on a worker thread */
-        Log.d(TAG, "call: right before Looper.prepare() should be called");
-        Looper.prepare();
+        /* check if Looper was prepared before; only ever call once within this thread */
+        if (Looper.myLooper() == null) {
+            Log.d(TAG, "Looper.prepare() called once in order to run GPS task in background thread.");
+            Looper.prepare();
+        }
 
         if (ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -54,12 +54,9 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
             return null;
         }
 
-        Log.d(TAG, "call: right before getlastKnownLocation() is called");
         Location gps_location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-//        Looper.loop();
-
 //        network_loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        if(gps_location != null && gps_location.getTime() > Calendar.getInstance().getTimeInMillis() - 120000) { // 2 * 60 * 1000, define age of loc data, 2 minutes?
+        if(gps_location != null && gps_location.getTime() > Calendar.getInstance().getTimeInMillis() - 12000) { // 2 * 60 * 1000, define age of loc data, 2 minutes?
             final_location = gps_location;
             latitude = final_location.getLatitude();
             longitude = final_location.getLongitude();
@@ -69,15 +66,10 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
             return passedLatLon;
         }
         else { /* AMBIGUOUS BEHAVIOUR WITH REQUESTING LOCATION UPDATES */
-            /* java.util.concurrent.ExecutionException: java.lang.RuntimeException:
-            Can't create handler inside thread Thread[pool-2-thread-1,5,main] that has
-            not called Looper.prepare()
-             */
-//            Looper.prepare();
             Log.d(TAG, "last known location returns null; need to requestLocationUpdates, but current behaviour is ambiguous, so the caller just defaults.");
 
             /* trigger LocationListener's callback onLocationChanged if location changed by >5km */
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 5000, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 5000, this/*, Looper.getMainLooper()*/);
         }
 
         return null;
