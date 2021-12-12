@@ -190,6 +190,12 @@ public class MainActivity extends AppCompatActivity {
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
                     Log.d(TAG, "GPS PERMISSION GRANTED BY USER. App behaviour is normal. ");
+
+                    /* maybe: trigger an update of location and then of the entire current
+                    * default list once it turns out the permission is granted */
+//                    temperatureViewModel.updateLocationOnPrompt();
+                    // temperatureViewModel.updateWeatherDataOnPrompt();
+
                 } else {
                     Log.d(TAG, "GPS PERMISSION DENIED BY USER. Explain consequences and handle display.");
                 }

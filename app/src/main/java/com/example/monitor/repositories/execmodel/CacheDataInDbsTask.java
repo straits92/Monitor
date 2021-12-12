@@ -9,6 +9,7 @@ import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -23,6 +24,7 @@ public class CacheDataInDbsTask implements Callable<String> {
     private Weather weatherDataPoint = null;
     private WeatherDao weatherDaoReference = null;
     private boolean shouldClearWeatherCache = false;
+    private boolean storeWeatherDataIteratively = false;
 
     /* constructors for caching of different data types */
     public CacheDataInDbsTask(MonitorLocation fetchedLocation, LocationDao locationDaoReference) {
@@ -31,8 +33,9 @@ public class CacheDataInDbsTask implements Callable<String> {
         this.locationDaoReference = locationDaoReference;
     }
 
-    public CacheDataInDbsTask(List<Weather> weatherList, WeatherDao weatherDaoReference, boolean shouldClearWeatherCache) {
+    public CacheDataInDbsTask(List<Weather> weatherList, WeatherDao weatherDaoReference, boolean shouldClearWeatherCache, boolean storeWeatherDataIteratively) {
         this.shouldClearWeatherCache = shouldClearWeatherCache;
+        this.storeWeatherDataIteratively = storeWeatherDataIteratively;
         this.weatherList = weatherList;
         this.weatherDaoReference = weatherDaoReference;
     }
@@ -67,6 +70,30 @@ public class CacheDataInDbsTask implements Callable<String> {
         weatherDaoReference.insert(weatherPoint);
     }
 
+    private void cacheWeatherDataListIteratively(List<Weather> weatherList) {
+
+        Iterator iter = weatherList.iterator();
+        while (iter.hasNext()) {
+            Weather weatherEntryInIter = (Weather) iter.next();
+            weatherDaoReference.update(weatherEntryInIter);
+        }
+
+        Log.d(TAG, "cacheWeatherDataListIteratively: after iterative update, weather list:");
+        List<Weather> weatherListNonLive = weatherDaoReference.getAllWeatherPointsNonLive();
+        Iterator readiter = weatherListNonLive.iterator();
+        while (readiter.hasNext()) {
+            Weather weatherEntryInIter = (Weather) readiter.next();
+            Integer elementIndex = weatherListNonLive.indexOf(weatherEntryInIter);
+            Log.i(TAG, "\nElement index: " + elementIndex
+                    + "\nDateTime: " + weatherEntryInIter.getTime()
+                    + "\nID: " + weatherEntryInIter.getId()
+                    + "\nPersistence: " + weatherEntryInIter.getPersistence());
+
+        }
+
+    }
+
+
     /* overridden call method for submitting task object to executor */
     @SuppressLint("LongLogTag")
     @Override
@@ -99,7 +126,11 @@ public class CacheDataInDbsTask implements Callable<String> {
         
         if (weatherList != null) {
             Log.d(TAG, "call: List of weather data to be cached.");
-            cacheWeatherDataList(weatherList);
+            if (storeWeatherDataIteratively) {
+                cacheWeatherDataListIteratively(weatherList);
+            } else {
+                cacheWeatherDataList(weatherList);
+            }
             return null;
         }
 
@@ -110,4 +141,5 @@ public class CacheDataInDbsTask implements Callable<String> {
 
         return null;
     }
+
 }

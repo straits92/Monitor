@@ -25,7 +25,7 @@ public class ParseUtils {
                 /* Hour-based request: response is an entire array (for days, response is JSONObj)*/
                 JSONArray results = new JSONArray(weatherSearchResults);
 
-                /* DO IN WORKER: extract weather data for each hour, construct data point, add to array */
+                /* extract weather data for each hour, construct data point, add to array */
                 for (int i = 0; i < results.length(); i++) {
                     Weather weather = new Weather(null, null, null, null, null, null);
 
