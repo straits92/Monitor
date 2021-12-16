@@ -38,27 +38,28 @@ public class Weather {
         this.category = category;
     }
 
+    public void setTimeInMillis(long timeInMillis) {
+        this.timeInMillis = timeInMillis;
+    }
+
     private String celsius;
     private String link;
     private String time;
     private String location; /* which location the data is relevant to */
     private Integer persistence; /* 0: younger than 24h; 1: younger than a week; 2: up for deletion, older than a week */
-    private Integer category; /* 0: hourly, 1: 12h, 2: raspberry sensor */
+    private Integer category; /* 1: hourly, 0: 12h, 2: raspberry sensor */
+    private long timeInMillis;
     /* add humidity etc ... */
 
-//    public Weather(String celsius, String link, String time) {
-//        this.celsius = celsius;
-//        this.link = link;
-//        this.time = time;
-//    }
 
-    public Weather(String celsius, String link, String time, String location, Integer persistence, Integer category) {
+    public Weather(String celsius, String link, String time, String location, Integer persistence, Integer category, long timeInMillis) {
         this.celsius = celsius;
         this.link = link;
         this.time = time;
         this.location = location;
         this.persistence = persistence;
         this.category = category;
+        this.timeInMillis = timeInMillis;
     }
 
     public int getId() {
@@ -88,4 +89,10 @@ public class Weather {
     public Integer getCategory() {
         return category;
     }
+
+    public long getTimeInMillis() {
+        return timeInMillis;
+    }
+
+
 }

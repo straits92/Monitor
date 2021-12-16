@@ -7,4 +7,6 @@
     <string name="firstHeader">Location</string>
     <string name="describeFAB">dummy add value</string>
     <string name="variableLocation">Var. Location</string>
+    <string name="unit_name">Degrees</string>
+    <string name="secondHeader">Units</string>
 </resources>

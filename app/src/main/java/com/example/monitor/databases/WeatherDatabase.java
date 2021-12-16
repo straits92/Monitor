@@ -43,45 +43,14 @@ public abstract class WeatherDatabase extends RoomDatabase {
         return instance;
     }
 
+    /* could be used to set up dummy database data on a bg thread */
     private static RoomDatabase.Callback roomCallback = new RoomDatabase.Callback() {
         @Override
         public void onCreate(@NonNull SupportSQLiteDatabase db) {
             super.onCreate(db);
 
-            /* dummy populate database here, on a bg thread */
-
-            /* with the asynctask*/
-//            new PopulateDbBackgroundTask(instance).execute();
-
-            /* with the callable; currently not working */
-//            try {
-//                Log.d(TAG, "Loading initial database...");
-//                instance.initialDatabaseContent();
-//                Log.d(TAG, "Loaded initial database!");
-//            } catch (ExecutionException | InterruptedException e) {
-//                Log.d(TAG, "roomCallback: initialDatabaseContent: Exception thrown!");
-//                e.printStackTrace();
-//            }
-
         }
     };
-
-    private static class PopulateDbBackgroundTask extends AsyncTask<Void, Void, Void> {
-        private WeatherDao weatherDao;
-
-        private PopulateDbBackgroundTask(WeatherDatabase db) {
-            weatherDao = db.weatherDao();
-        }
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            Log.d(TAG, "PopulateDbBackgroundTask bg thread: called !!!!!!!!!!!");
-//            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "0"));
-//            weatherDao.insert(new Weather("1", "ASyncTask_weatherdb", "1"));
-            Log.d(TAG, "PopulateDbBackgroundTask bg thread: dummy weather points inserted!!!!!!!!!!");
-            return null;
-        }
-    }
 
 
 }

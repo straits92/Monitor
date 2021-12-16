@@ -3,6 +3,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url 'https://jitpack.io' } // had to include this here for MPAndroidChart library
         jcenter() // Warning: this repository is going to shut down soon
     }
 }

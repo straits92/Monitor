@@ -27,7 +27,7 @@ public class ParseUtils {
 
                 /* extract weather data for each hour, construct data point, add to array */
                 for (int i = 0; i < results.length(); i++) {
-                    Weather weather = new Weather(null, null, null, null, null, null);
+                    Weather weather = new Weather(null, null, null, null, null, null, 0);
 
                     /* set the data obtained from the network response; not resultant analytical data */
                     JSONObject singleEntry = results.getJSONObject(i);

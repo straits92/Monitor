@@ -8,16 +8,16 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/idLocationsContainer"
-        android:layout_width="347dp"
-        android:layout_height="104dp"
+        android:layout_width="131dp"
+        android:layout_height="77dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="25dp"
-        android:layout_marginEnd="20dp"
+        android:layout_marginTop="28dp"
+        android:layout_marginEnd="220dp"
         android:background="@color/purple_200"
         android:outlineProvider="paddedBounds"
         android:visibility="visible"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.541"
+        app:layout_constraintHorizontal_bias="0.375"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -25,27 +25,18 @@
             android:id="@+id/homeLocation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="28dp"
+            android:layout_marginStart="15dp"
+            android:layout_marginTop="20dp"
             android:text="@string/homeLocation"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <Button
-            android:id="@+id/variableLocation"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="144dp"
-            android:layout_marginTop="28dp"
-            android:text="@string/variableLocation"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/displayInterfaceContainer"
-        android:layout_width="375dp"
-        android:layout_height="339dp"
+        android:layout_width="372dp"
+        android:layout_height="477dp"
         android:layout_marginStart="12dp"
         android:layout_marginTop="150dp"
         android:layout_marginEnd="12dp"
@@ -56,12 +47,21 @@
         app:layout_constraintTop_toTopOf="parent">
 
 
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/idTemperatureLineChart1"
+            android:layout_width="354dp"
+            android:layout_height="278dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="128dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <RadioGroup
             android:id="@+id/selectDisplayFormat"
             android:layout_width="128dp"
             android:layout_height="42dp"
-            android:layout_marginTop="276dp"
-            android:layout_marginEnd="212dp"
+            android:layout_marginTop="416dp"
+            android:layout_marginEnd="220dp"
             android:background="#000FFF"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -80,7 +80,7 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"
             android:layout_width="344dp"
-            android:layout_height="253dp"
+            android:layout_height="100dp"
             android:layout_marginStart="15dp"
             android:layout_marginTop="15dp"
             android:background="#FF9800"
@@ -92,8 +92,8 @@
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="150dp"
-            android:layout_marginTop="150dp"
+            android:layout_marginStart="152dp"
+            android:layout_marginTop="48dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -101,15 +101,15 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/dataGroupsContainer"
-        android:layout_width="343dp"
-        android:layout_height="83dp"
+        android:layout_width="188dp"
+        android:layout_height="78dp"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp"
+        android:layout_marginBottom="624dp"
         android:background="#AE2727"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.535"
+        app:layout_constraintHorizontal_bias="0.928"
         app:layout_constraintStart_toStartOf="parent">
 
         <Button
@@ -123,16 +123,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <Button
-            android:id="@+id/dataType2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="180dp"
-            android:layout_marginTop="20dp"
-            android:text="@string/dataType2"
-            android:textSize="11sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <TextView
@@ -146,15 +136,25 @@
         app:layout_constraintStart_toStartOf="@+id/idLocationsContainer" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:contentDescription="@string/describeFAB"
         android:id="@+id/floatingActionButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="11dp"
-        android:layout_marginTop="508dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="644dp"
         android:clickable="true"
+        android:contentDescription="@string/describeFAB"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_launcher_background" />
+
+    <TextView
+        android:id="@+id/firstHeader2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/secondHeader"
+        android:textColor="#050505"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@+id/dataGroupsContainer"
+        app:layout_constraintStart_toStartOf="@+id/dataGroupsContainer" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
