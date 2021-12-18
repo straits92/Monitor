@@ -37,21 +37,39 @@
         <!--app:layout_constraintTop_toBottomOf="@id/idTime"-->
 
         <TextView
-            android:id="@+id/idTime"
+            android:id="@+id/idTimeRaw"
             app:layout_constraintTop_toTopOf="parent"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="time_placeholder"
+            android:text="time_raw"
             android:textColor="@color/black"
             android:textSize="10dp"></TextView>
         <TextView
+            android:id="@+id/idTimeMillis"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="time_millis"
+            android:textColor="@color/black"
+            android:textSize="10dp"></TextView>
+        <TextView
+            android:id="@+id/idTimeHours"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="time_hours"
+            android:textColor="@color/black"
+            android:textSize="10dp"></TextView>
+<!--        <TextView
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="@string/unit_name"
             android:textColor="@color/black"
-            android:textSize="10dp"></TextView>
+            android:textSize="10dp"></TextView>-->
         <TextView
             android:id="@+id/idTemp"
             android:layout_weight="1"

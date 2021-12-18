@@ -13,11 +13,11 @@ import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.networkutils.NetworkUtils;
 import com.example.monitor.repositories.parseutils.ParseUtils;
-import com.google.type.DateTime;
 
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -44,6 +44,17 @@ import java.util.concurrent.TimeoutException;
 *
 * */
 
+/* How to avoid storing (or reading) duplicate weather points? Do it somewhere in the process flow.
+* Prior to every network request, check: was data requested FOR THIS HOUR? was data requested
+* FOR THE NEXT TWELVE HOURS? this may need a "checkbox" data structure; cleared and ticket on an
+* hourly basis, and two boxes cleared/ticked on a daily basis.
+*
+* Prior to caching or prior to network request, check contents of the database if it contains:
+* an hourly point for this hour, or a twelve-hour point for this hour. if yes, do not cache/request.
+*
+* Prior to drawing, skip duplicates or eliminate duplicates based on two metrics: time, and type.
+*  */
+
 public class RemoteDataFetchModel {
     private static final String TAG = "RemoteDataFetchModel";
 
@@ -62,8 +73,7 @@ public class RemoteDataFetchModel {
     private static MonitorLocation defaultHomeLocation;
     private static List<MonitorLocation> defaultMonitorLocationList;
 
-    private static ExecutorService weatherExecutor;
-    private static ExecutorService locationExecutor;
+    private static ExecutorService networkExecutor;
     private static ExecutorService cachingExecutor;
     private static ExecutorService serviceExecutor;
     private static ExecutorService gpsExecutor;
@@ -71,8 +81,8 @@ public class RemoteDataFetchModel {
 
     /* singleton, instantiated in environment which provides a data access object and reference to activity  */
     public static RemoteDataFetchModel getInstance(WeatherDao weatherDao, LocationDao locationDao, Application application) {
-        if (instance == null){
-            
+        if (instance == null) {
+
             /* set up private members */
             instance = new RemoteDataFetchModel();
             weatherDaoReference = weatherDao;
@@ -84,10 +94,8 @@ public class RemoteDataFetchModel {
             Integer howLongVisible = 60 * 60 * 24; /* should be a day */
             Integer howLongStored = 60 * 60 * 24 * 7; /* should be a week */
 
-            /* instantiate all necessary executors;
-            * weather thread and location thread should NOT submit requests to each other. */
-            weatherExecutor = ExecutorHelper.getNetworkRequestExecutorInstance(); // weather network
-            locationExecutor = ExecutorHelper.getNetworkRequestExecutorInstance(); // location network
+            /* instantiate all necessary executors; never nest submissions to the same executor. */
+            networkExecutor = ExecutorHelper.getNetworkRequestExecutorInstance(); // weather&location network
             cachingExecutor = ExecutorHelper.getDatabaseExecutorInstance(); // all caching into db
             serviceExecutor = ExecutorHelper.getServiceExecutorInstance(); // for user purposes
             scheduledExecutor = ExecutorHelper.getScheduledPoolInstance();
@@ -116,23 +124,23 @@ public class RemoteDataFetchModel {
                 fetchedMonitorLocation = getLocationFromNetwork(0, gpsLatLon, defaultMonitorLocationList);
                 cachingExecutor.submit(new CacheDataInDbsTask(fetchedMonitorLocation, locationDaoReference));
             } else {
-                Log.d(TAG, "getInstance: gpsLatLon is null; default to "+defaultHomeLocation.getLocalizedName());
+                Log.d(TAG, "getInstance: gpsLatLon is null; default to " + defaultHomeLocation.getLocalizedName());
                 fetchedMonitorLocation = defaultHomeLocation;
             }
 
-            /* weather operations */
-            /* (blocking) get initial forecast (type 12h) based on initial location */
-            List<Weather> initialWeatherList = getForecastFromNetwork(TWELVE_HOURS_DATA,
-                    fetchedMonitorLocation, "successfully obtained 12 hour forecast.");
+            /* weather operations done only if weather not fetched for this period */
+            if (dataNeedsFetching(TWELVE_HOURS_DATA)) {
+                /* (blocking) get initial forecast (type 12h) based on initial location */
+                List<Weather> initialWeatherList = getForecastFromNetwork(TWELVE_HOURS_DATA,
+                        fetchedMonitorLocation, "successfully obtained 12 hour forecast.");
 
-            /* Now more than just today's forecast gets fetched because caching does not delete it.
-            * Also, no checking is done to avoid storing duplicate weather data points for the same hr. */
-            /* (non-blocking) then cache the weather here and erase old data in case of initial forecast */
-            if (initialWeatherList != null) {
-                /* go through point(s) in the list and set initial analytics */
-                setAnalyticsToWeatherData(initialWeatherList, fetchedMonitorLocation.getLocalizedName(), UNDER_24H, TWELVE_HOURS_DATA);
-                cachingExecutor.submit(new CacheDataInDbsTask(initialWeatherList, weatherDaoReference,
-                        false, false));
+                /* (non-blocking) then cache the weather here and erase old data in case of initial forecast */
+                if (initialWeatherList != null) {
+                    /* go through point(s) in the list and set initial analytics */
+                    setAnalyticsToWeatherData(initialWeatherList, fetchedMonitorLocation.getLocalizedName(), UNDER_24H, TWELVE_HOURS_DATA);
+                    cachingExecutor.submit(new CacheDataInDbsTask(initialWeatherList, weatherDaoReference,
+                            false, false));
+                }
             }
             // ----- end startup tasks
 
@@ -144,6 +152,41 @@ public class RemoteDataFetchModel {
             // ----- end periodic tasks
         }
         return instance;
+    }
+
+    private static boolean dataNeedsFetching(Integer dataCategory) {
+        Log.d(TAG, "dataNeedsFetching: check if dataCategory: "
+                +dataCategory+"; needs fetching. 1: hourly, 0: twelve hours.");
+        List<Weather> weatherList = null;
+
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.MILLISECOND, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MINUTE, 0);
+//        today.set(Calendar.HOUR, 0); // seems like this rounded the hour to 12, causing a mismatch when comparing times.
+        long startOfHour = today.getTimeInMillis();
+
+        Log.d(TAG, "dataNeedsFetching: current hour millis: "+startOfHour);
+
+        Future<List<Weather>> checkDataTask = getForecastFromDbNonBlocking();
+        try {
+            weatherList = checkDataTask.get();
+        } catch (Exception e){
+            e.printStackTrace();
+            return true;
+        }
+
+        Iterator iter = weatherList.iterator();
+        while (iter.hasNext()) {
+            Weather weatherEntryInIter = (Weather) iter.next();
+            if ((weatherEntryInIter.getCategory() == dataCategory)
+                    && (weatherEntryInIter.getTimeInMillis() == startOfHour)){
+                Log.d(TAG, "dataNeedsFetching: no, weather data for this hour is present.");
+                return false;
+            }
+        }
+        Log.d(TAG, "dataNeedsFetching: yes, data matching this hour was not found in database.");
+        return true;
     }
 
     /* public method for user-prompted location update */
@@ -189,7 +232,7 @@ public class RemoteDataFetchModel {
         URL locationUrl;
         MonitorLocation fetchedMonitorLocation = defaultMonitorLocationList.get(locationType);
         locationUrl = NetworkUtils.buildUrlForLocation(gpsLatLon.get(0), gpsLatLon.get(1));
-        Future<String> initialLocationTask = locationExecutor.submit((Callable<String>) new ContactWeatherApiTask(locationUrl));
+        Future<String> initialLocationTask = networkExecutor.submit((Callable<String>) new ContactWeatherApiTask(locationUrl));
         try {
             locationResponse = initialLocationTask.get(4500, TimeUnit.MILLISECONDS);
             Log.d(TAG, "getCurrentLocation: obtained location response from Accuweather");
@@ -214,9 +257,9 @@ public class RemoteDataFetchModel {
         List<Weather> weatherList;
 
         /* forecastType: 0, 12hour; 1, 1hour. */
-        Log.d(TAG, "getForecastFromNetwork: building URL with location "+location.getLocation());
+//        Log.d(TAG, "getForecastFromNetwork: building URL with location "+location.getLocation());
         URL networkWeatherUrl = NetworkUtils.buildUrlForWeather(forecastType, location.getLocation());
-        Future<String> initialWeatherTask = weatherExecutor
+        Future<String> initialWeatherTask = networkExecutor
                 .submit((Callable<String>) new ContactWeatherApiTask(networkWeatherUrl));
         try {
             weatherResponse = initialWeatherTask.get(5000, TimeUnit.MILLISECONDS);
@@ -252,6 +295,9 @@ public class RemoteDataFetchModel {
             }
 
             long weatherTimeInMillis = getWeatherDataPointTime(weatherEntryInIter.getTime());
+            if (weatherTimeInMillis == 0) {
+                Log.d(TAG, "setAnalyticsToWeatherData: ERROR: MILLIS DEFAULT TO 0, API FORMAT NOT READ.");
+            }
             weatherEntryInIter.setTimeInMillis(weatherTimeInMillis);
         }
     }
@@ -275,10 +321,10 @@ public class RemoteDataFetchModel {
 
         /* examine each data point's DateTime, formulate Date object, compare to current, modify age
         * category, and mark old data for deletion if older than howLongStored */
-        boolean printWeatherInfo = true;
+        boolean printWeatherInfo = false;
         List<Weather> modifiedWeatherList = new ArrayList<>();
         Integer ageCategory = UNDER_24H;
-        long weatherTimeInMillis = 0;
+        long weatherTimeInMillis;
         Date currentDate = new Date(System.currentTimeMillis());
         long currentDateMillis = currentDate.getTime();
 
@@ -311,24 +357,31 @@ public class RemoteDataFetchModel {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private static Integer updateDataAge(long weatherTimeInMillis, long currentDateMillis, Integer howLongVisible, Integer howLongStored) {
 
+        boolean printTimeData = false;
         /* do time comparison */
         if (weatherTimeInMillis >= currentDateMillis) {
-            Log.d(TAG, "updateDataAge: data point in future, data time ["
-                    +currentDateMillis+"] > current time ["+weatherTimeInMillis+"]; remain visible.");
+            if (printTimeData) {
+                Log.d(TAG, "updateDataAge: data point in future, data time ["
+                        + weatherTimeInMillis + "] > current time [" + currentDateMillis + "]; remain visible.");
+                }
             return UNDER_24H;
         }
 
         if ( (currentDateMillis - weatherTimeInMillis) >= (howLongStored*1000)) {
-            Log.d(TAG, "updateDataAge: data point ["+weatherTimeInMillis+
-                    "] older than current time ["+currentDateMillis+"] by more than howLongStored ["
-                    +howLongStored+"]*1000, (should be over a week), don't store.");
+            if (printTimeData) {
+                Log.d(TAG, "updateDataAge: data point [" + weatherTimeInMillis +
+                        "] older than current time [" + currentDateMillis + "] by more than howLongStored ["
+                        + howLongStored + "]*1000, (should be over a week), don't store.");
+                }
             return MORE_THAN_A_WEEK;
         }
 
         if ( (currentDateMillis - weatherTimeInMillis) >= (howLongVisible*1000)) {
-            Log.d(TAG, "updateDataAge: this point["+weatherTimeInMillis+"] is older than current time ["
-                    +currentDateMillis+"] by more than howLongVisible "+howLongVisible
-                    +"*1000, (should be over a day), not visible, but still stored.");
+            if (printTimeData) {
+                Log.d(TAG, "updateDataAge: this point[" + weatherTimeInMillis + "] is older than current time ["
+                        + currentDateMillis + "] by more than howLongVisible " + howLongVisible
+                        + "*1000, (should be over a day), not visible, but still stored.");
+                }
             return BETWEEN_DAY_AND_WEEK;
         }
 
@@ -336,15 +389,15 @@ public class RemoteDataFetchModel {
         return UNDER_24H;
     }
 
+    /* interprets time in format used by Accuweather API */
     public static long getWeatherDataPointTime(String dateTime) {
-        /* time of string parsed into Date format */
         String pattern = "yyyy-MM-dd'T'HH:mm:ssXXX";
         SimpleDateFormat dateFormat; Date d = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
             dateFormat = new SimpleDateFormat(pattern);
         } else {
-            Log.d(TAG, "updateDataAge: can't update due to android version; default to UNDER_24H");
-            return UNDER_24H;
+            Log.d(TAG, "updateDataAge: can't update due to android version; default to 0");
+            return 0;
         }
         try {
             d = dateFormat.parse(dateTime);
@@ -371,7 +424,7 @@ public class RemoteDataFetchModel {
             return;
         }
 
-        boolean printWeatherInfo = true;
+        boolean printWeatherInfo = false;
         Iterator iter = weatherList.iterator();
         while (iter.hasNext()) {
             Weather weatherEntryInIter = (Weather) iter.next();
@@ -392,19 +445,13 @@ public class RemoteDataFetchModel {
 
     }
 
-    /* have a "type" Weather member which signifies whether
-     * the data point is a 12-hour data point, an hourly data point, or an hourly data
-     * point fetched from raspberry sensor (which would be the most frequent)
-     * so these three different classifications of weather data points would be aggregated
-     * in the same database in chronological order.
-     * however, they would be routed into three separate displays, or graph trends.
-     *
-     * similarly, different scheduled task patterns could be grouped by different
-     * locations, and if necessary differentiated by the "location" Weather member */
-    /* set up scheduled tasks to be done in the background, based on cached location */
+    /* Weather member "category" states if data point is a 12-hour data point, an hourly data point,
+     * or an hourly data point fetched from raspberry sensor; these classifications of data points
+     * are aggregated in the same database chronologically, but routed into separate displays/trends.
+     * similarly, different scheduled task patterns could be grouped by different locations */
 
-    /* space out the initial and periodic delays of each task to avoid locking of threads or
-    * multiple distinct periodic tasks being run at once */
+    /* scheduled tasks in the background: space out the initial and periodic delays of each task to
+    * avoid locking of threads or multiple distinct periodic tasks being run at once */
     public static synchronized void setUpPeriodicWeatherQueries(Integer tillNextQuery, Integer howLongVisible, Integer howLongStored) {
 
         /* define initial delay of each task such that they don't compete for the same thread at the
@@ -433,14 +480,16 @@ public class RemoteDataFetchModel {
                     e.printStackTrace();
                 }
 
-                hourlyWeatherList = getForecastFromNetwork(SINGLE_HOUR_DATA,
-                        fetchedLocation, "successfully fetched single hour forecast.");
+                if (dataNeedsFetching(SINGLE_HOUR_DATA)) {
+                    hourlyWeatherList = getForecastFromNetwork(SINGLE_HOUR_DATA,
+                            fetchedLocation, "successfully fetched single hour forecast.");
 
-                setAnalyticsToWeatherData(hourlyWeatherList, fetchedLocation.getLocalizedName(),
-                        UNDER_24H, SINGLE_HOUR_DATA);
+                    setAnalyticsToWeatherData(hourlyWeatherList, fetchedLocation.getLocalizedName(),
+                            UNDER_24H, SINGLE_HOUR_DATA);
 
-                cachingExecutor.submit(new CacheDataInDbsTask(hourlyWeatherList.get(0), weatherDaoReference,
-                        false));
+                    cachingExecutor.submit(new CacheDataInDbsTask(hourlyWeatherList.get(0), weatherDaoReference,
+                            false));
+                }
             }
         }, initialDelayHourly, 2000, TimeUnit.SECONDS);
 
@@ -494,7 +543,7 @@ public class RemoteDataFetchModel {
             }
         });
 
-        return  getWeatherListFromDbTask;
+        return getWeatherListFromDbTask;
     }
 
 }

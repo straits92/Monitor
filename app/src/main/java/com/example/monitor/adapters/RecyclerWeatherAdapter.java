@@ -12,7 +12,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.monitor.R;
 import com.example.monitor.models.Weather;
 
+import org.w3c.dom.Text;
+
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 /* RecyclerView is populated by the OS using these callback methods */
@@ -31,8 +35,17 @@ public class RecyclerWeatherAdapter extends RecyclerView.Adapter<RecyclerWeather
     public void onBindViewHolder(@NonNull WeatherViewHolder holder, int position) {
         Weather currentWeatherPoint = weatherRecyclerEntries.get(position);
         holder.timeText.setText(currentWeatherPoint.getTime());
-        holder.temperatureText.setText(currentWeatherPoint.getCelsius());
-        holder.linkText.setText(currentWeatherPoint.getLink());
+        holder.timeMillis.setText(Long.toString(currentWeatherPoint.getTimeInMillis()));
+
+        /* extract the hour */
+        Calendar today = Calendar.getInstance();
+        today.setTimeInMillis(currentWeatherPoint.getTimeInMillis());
+        holder.timeHours.setText(Integer.toString(today.get(Calendar.HOUR)));
+
+        holder.temperatureText.setText(currentWeatherPoint.getCelsius() + " C");
+
+        /* don't bind a value to link field for debugging; it takes a lot of space in RecyclerView */
+//        holder.linkText.setText(currentWeatherPoint.getLink());
     }
 
     @Override
@@ -46,14 +59,23 @@ public class RecyclerWeatherAdapter extends RecyclerView.Adapter<RecyclerWeather
         /* also use notifyItemInserted, notifyItemRemoved if needed */
     }
 
+
+    /* the holder class */
     public class WeatherViewHolder extends RecyclerView.ViewHolder {
         TextView timeText;
+        TextView timeMillis;
+        TextView timeHours;
+
         TextView temperatureText;
         TextView linkText;
+
         ConstraintLayout entryParentLayout;
         public WeatherViewHolder(@NonNull View itemView) {
             super(itemView);
-            timeText = itemView.findViewById(R.id.idTime);
+            timeText = itemView.findViewById(R.id.idTimeRaw);
+            timeMillis = itemView.findViewById(R.id.idTimeMillis);
+            timeHours = itemView.findViewById(R.id.idTimeHours);
+
             temperatureText = itemView.findViewById(R.id.idTemp);
             linkText = itemView.findViewById(R.id.idLinkInfo);
             entryParentLayout = itemView.findViewById(R.id.idListEntryContainer);

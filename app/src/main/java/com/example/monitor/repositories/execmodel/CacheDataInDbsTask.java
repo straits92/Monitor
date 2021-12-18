@@ -72,6 +72,7 @@ public class CacheDataInDbsTask implements Callable<String> {
 
     private void cacheWeatherDataListIteratively(List<Weather> weatherList) {
 
+        boolean printDataInfo = false;
         Iterator iter = weatherList.iterator();
         while (iter.hasNext()) {
             Weather weatherEntryInIter = (Weather) iter.next();
@@ -84,10 +85,12 @@ public class CacheDataInDbsTask implements Callable<String> {
         while (readiter.hasNext()) {
             Weather weatherEntryInIter = (Weather) readiter.next();
             Integer elementIndex = weatherListNonLive.indexOf(weatherEntryInIter);
-            Log.i(TAG, "\nElement index: " + elementIndex
-                    + "\nDateTime: " + weatherEntryInIter.getTime()
-                    + "\nID: " + weatherEntryInIter.getId()
-                    + "\nPersistence: " + weatherEntryInIter.getPersistence());
+            if (printDataInfo) {
+                Log.i(TAG, "\nElement index: " + elementIndex
+                        + "\nDateTime: " + weatherEntryInIter.getTime()
+                        + "\nID: " + weatherEntryInIter.getId()
+                        + "\nPersistence: " + weatherEntryInIter.getPersistence());
+            }
 
         }
 

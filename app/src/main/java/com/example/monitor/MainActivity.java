@@ -54,23 +54,19 @@ import java.util.Locale;
  * handle object dependencies via dependency injection:
  *      (not implemented: used to reduce boilerplate code; does not preserve state.)
  *
- * implement a data cache queried by repository
- *      (seems to be made, and preserved, by Room functionality)
+ * implement a data cache queried by repository (done by Room functionality)
  *
- * implement network utilities for the web server data source
- *      (done for initial 12hr.)
+ * implement network utilities for the web server data source (done)
  *
  * implement background hourly updates of the data (done)
  *
- * implement graphing display for data
+ * implement graphing display for data (done)
  *
  * allow for switching and resizing of display, showing/hiding different trends, scrolling the graph,
  *
  * improve graphic style
  *
- * have 2+ data arrays maintained for different data sources of temp
- *
- * later: query the local raspberry pi for temperature sensor data, store this data
+ * query the local raspberry pi for temperature sensor data, store this data
  *
  * future extensions:
  * offer trend extrapolation
@@ -97,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
     private LineChart temperatureLineChart;
 
     /* dummy action button for updates to the list */
-    private FloatingActionButton dummyFab;
+//    private FloatingActionButton dummyFab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,37 +119,36 @@ public class MainActivity extends AppCompatActivity {
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
 
         /* user interaction via fab click goes here */
-        dummyFab = findViewById(R.id.floatingActionButton);
-        dummyFab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showProgressBar();
-                /* calls to other code go here */
-            }
-        });
-        hideProgressBar();
+//        dummyFab = findViewById(R.id.floatingActionButton);
+//        dummyFab.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                showProgressBar();
+//                /* calls to other code go here */
+//            }
+//        });
+//        hideProgressBar();
 
 
         /* initialize ViewModel scoped to lifecycle of this activity; android will destroy it at end */
         temperatureViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
         /* observe() is a livedata method, activity gets passed to it. code in onChanged should
-        * redraw everything when any data is changed in the LiveData object. other data adapters
-        * will be needed on the main activity / viewmodel level to show different types of data
-        * separately, based on the weather data point's category */
+        * redraw everything when any data is changed in the LiveData object.  */
         temperatureViewModel.getWeatherDataEntries().observe(this, new Observer<List<Weather>>(){
             @Override
             public void onChanged(@Nullable List<Weather> weathers) {
-                Log.d(TAG, "onChanged: Data observed from WeatherRepository, added to RecyclerView.");
+//                Log.d(TAG, "onChanged: Data observed from WeatherRepository, added to RecyclerView, graph to be redrawn.");
                 weatherAdapter.setWeatherRecyclerEntries(weathers); /* use notifyItemInserted, notifyItemRemoved */
 
-                Log.d(TAG, "onChanged: graph construction starting.");
                 /* scan weathers to extract distinct data types; may be better as a background task for remoteModel? */
-                List<Entry> twelveHourWeatherList = new ArrayList<>()/*temperatureViewModel.getTwelveHourWeatherList()*/;
+                List<Entry> twelveHourWeatherList = new ArrayList<>();
                 List<Entry> hourlyWeatherList = new ArrayList<>()/*temperatureViewModel.getHourlyWeatherList()*/;
                 List<Entry> sensorWeatherList = new ArrayList<>()/*temperatureViewModel.getSensorWeatherList()*/;
 
-                /* this could be doable in the background too, daily. */
+                /* this could be doable in the background too, but dailyTimeOrigin needs to be a
+                * consistent value for the entire day, and computing it here is more taxing on the
+                * UI thread as well as more accurate. */
                 Calendar today = Calendar.getInstance();
                 today.set(Calendar.MILLISECOND, 0);
                 today.set(Calendar.SECOND, 0);
@@ -161,6 +156,7 @@ public class MainActivity extends AppCompatActivity {
                 today.set(Calendar.HOUR_OF_DAY, 0);
                 long dailyTimeOrigin = today.getTimeInMillis();
 
+                /* should only collect data with persistence of 0, "visible" */
                 separateWeatherDataTrends(dailyTimeOrigin, weathers, twelveHourWeatherList, hourlyWeatherList, sensorWeatherList);
 
                 /* needed to avoid NegativeArraySizeException with MPAndroidChart library */
@@ -168,31 +164,26 @@ public class MainActivity extends AppCompatActivity {
                 Collections.sort(hourlyWeatherList, new EntryXComparator());
                 Collections.sort(sensorWeatherList, new EntryXComparator());
 
-                Log.d(TAG, "onChanged: data sets to be created");
                 /* bind the data to the temperatureLineChart */
                 ArrayList<ILineDataSet> lineDataSets = new ArrayList<>();
                 LineDataSet twelveHourTemperatureSet = new LineDataSet(twelveHourWeatherList, "Forecast(12hr)");
                 LineDataSet hourlyTemperatureSet = new LineDataSet(hourlyWeatherList, "Current(1hr)");
                 LineDataSet sensorTemperatureSet = new LineDataSet(sensorWeatherList, "Sensor temperature");
 
-                twelveHourTemperatureSet.setDrawCircles(true);twelveHourTemperatureSet.setColor(Color.BLUE);
+                twelveHourTemperatureSet.setDrawCircles(true);twelveHourTemperatureSet.setColor(Color.BLACK);
                 hourlyTemperatureSet.setDrawCircles(true); hourlyTemperatureSet.setColor(Color.GREEN);
                 sensorTemperatureSet.setDrawCircles(true); sensorTemperatureSet.setColor(Color.RED);
 
-                Log.d(TAG, "onChanged: data sets to be added to graph");
                 lineDataSets.add(twelveHourTemperatureSet);
                 lineDataSets.add(hourlyTemperatureSet);
                 lineDataSets.add(sensorTemperatureSet);
 
-
-
-                /* set the value formatter; should this be done out of the loop, same scope where the graph is drawn? */
+                /* set the value formatter to display the X axis as desired */
                 ValueFormatter xAxisFormatter = new HourAxisValueFormatter(dailyTimeOrigin);
                 XAxis xAxis = temperatureLineChart.getXAxis();
                 xAxis.setValueFormatter(xAxisFormatter);
 
                 temperatureLineChart.setData(new LineData(lineDataSets)); // does it also need axis annotation?
-//                temperatureLineChart.setVisibleXRangeMaximum(65f);
 
             }
         });
@@ -251,27 +242,33 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onCreate: started.");
     }
 
+    /* graphing utilities
+    * current graph issues:
+    * x-axis labels are sporadic hh:mm even though the data hours are round values
+    * no clear grid gradations for axes
+    *
+    *  */
     private void separateWeatherDataTrends(long dailyTimeOrigin, List<Weather> weathers, List<Entry> twelveHourWeatherList,
                                            List<Entry> hourlyWeatherList, List<Entry> sensorWeatherList) {
         Log.d(TAG, "separateWeatherDataTrends: entries to be generated for each data point, all trends");
         Iterator iter = weathers.iterator();
         while (iter.hasNext()) {
-            Weather weatherEntryInIter = (Weather) iter.next(); /*int index = weathers.indexOf(weatherEntryInIter);*/
+            Weather weatherEntryInIter = (Weather) iter.next();
+
+            /* if data isn't younger than 24h, don't show it */
+            if (weatherEntryInIter.getPersistence() != 0)
+                continue;
+
             Integer category = weatherEntryInIter.getCategory();
             float temperature = Float.parseFloat(weatherEntryInIter.getCelsius());
             long convertedDataMillis = 0;
 
-            /* for now, the zero y-axis should be at "beginning of today", and data for earlier times
-            * to be displayed behind the y-axis. in the simplest implementation, the x-axis will
-            * go into the negative. but the sensible display should show progressively increasing
-            * hours in the positive, somehow associated with its correct date of yesterday. */
             long dataPointMillis = weatherEntryInIter.getTimeInMillis();
 
             /* need to recalculate whenever we draw, the reference timestamp should be start of today */
             convertedDataMillis = dataPointMillis - dailyTimeOrigin;
 
             /* treat your Date as a timestamp when creating Entry object */
-//            Entry dataPointWithTime = new Entry(new Long(absTime).floatValue(), temperature);
             Entry dataPoint = new Entry(convertedDataMillis, temperature);
             if (category == SINGLE_HOUR_DATA) {
                 hourlyWeatherList.add(dataPoint);
@@ -287,7 +284,8 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    /*in your IAxisValueFormatter is to convert the timestamp representation back to a Date and then into something human readable*/
+    /*in your IAxisValueFormatter is to convert the timestamp representation back to a Date and then
+    * into something human readable*/
     public class HourAxisValueFormatter extends ValueFormatter {
 
         private long referenceTimestamp; // minimum timestamp in your data set
@@ -306,11 +304,11 @@ public class MainActivity extends AppCompatActivity {
          * and memory allocations inside this method.
          *
          * @param value the value to be formatted
-         * @param axis  the axis the value belongs to
+//         * @param axis  the axis the value belongs to
          * @return
          */
         @Override
-        public String getFormattedValue(float value, AxisBase axis) {
+        public String getFormattedValue(float value/* AxisBase axis argument deprecated */) {
             // convertedTimestamp = originalTimestamp - referenceTimestamp
             long convertedTimestamp = (long) value;
 
@@ -321,14 +319,14 @@ public class MainActivity extends AppCompatActivity {
             return getHour(originalTimestamp);
         }
 
-//        @Override
-        public int getDecimalDigits() {
-            return 0;
-        }
+//        @Override not present in superclass
+//        public int getDecimalDigits() {
+//            return 0;
+//        }
 
         private String getHour(long timestamp){
             try{
-                mDate.setTime(timestamp*1000);
+                mDate.setTime(timestamp/* *1000, arguments already in millis */);
                 return mDataFormat.format(mDate);
             }
             catch(Exception ex){
@@ -337,23 +335,21 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /* helpers for the progress bar */
     private void showProgressBar() { progressBar.setVisibility(View.VISIBLE);}
     private void hideProgressBar() { progressBar.setVisibility(View.INVISIBLE);}
 
-
     /* GPS permissions */
     private ActivityResultLauncher<String> requestPermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-                if (isGranted) {
-                    Log.d(TAG, "GPS PERMISSION GRANTED BY USER. App behaviour is normal. ");
-
-                    /* maybe: trigger an update of location and then of the entire current
-                    * default list once it turns out the permission is granted */
-//                    temperatureViewModel.updateLocationOnPrompt();
-                    // temperatureViewModel.updateWeatherDataOnPrompt();
-
-                } else {
-                    Log.d(TAG, "GPS PERMISSION DENIED BY USER. Explain consequences and handle display.");
-                }
-            });
+        registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+            if (isGranted) {
+                Log.d(TAG, "GPS PERMISSION GRANTED BY USER. App behaviour is normal. ");
+                /* maybe: trigger an update of location and then of the entire current
+                * default list once it turns out the permission is granted */
+//                temperatureViewModel.updateLocationOnPrompt();
+//                temperatureViewModel.updateWeatherDataOnPrompt();
+            } else {
+                Log.d(TAG, "GPS PERMISSION DENIED BY USER. Explain consequences and handle display.");
+            }
+        });
 }
