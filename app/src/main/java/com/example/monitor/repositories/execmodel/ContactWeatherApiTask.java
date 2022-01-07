@@ -23,9 +23,9 @@ public class ContactWeatherApiTask implements Callable<String> {
         Log.i(TAG, "URL requested: "+requestUrl.toString());
         try {
             response = NetworkUtils.getResponseFromHttpUrl(requestUrl);
-            Log.i(TAG, "response from API: " + response);
+            Log.i(TAG, "response from API or LAN: " + response);
         } catch (IOException e){
-            Log.i(TAG, "fetching failed: potentially ran out of free API requests for the day");
+            Log.i(TAG, "fetching failed: maybe ran out of free API requests for the day; or LAN issues");
             e.printStackTrace();
         }
 

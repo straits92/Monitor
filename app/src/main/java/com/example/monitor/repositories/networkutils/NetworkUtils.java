@@ -19,7 +19,7 @@ public class NetworkUtils {
     private static final String WEATHERDB_GEOPOSITION =
             "http://dataservice.accuweather.com/locations/v1/cities/geoposition/search";
 
-    /* hourly requests authorized by free usage of API */
+    /* hourly requests via Accuweather API */
     private static final String WEATHERDB_BASE_URL_1HOUR =
             "http://dataservice.accuweather.com/forecasts/v1/hourly/1hour/";
     private static final String WEATHERDB_BASE_URL_12HOURS =
@@ -31,6 +31,10 @@ public class NetworkUtils {
     private static final String PARAM_LOC = "q";
     private static final String PARAM_DETAILS = "details";
 
+    /* hourly requests towards LAN server on Raspberry Pi connected to sensor */
+    private static final String LAN_IP = "192.168.1.157";
+    private static final String LAN_URL_1HOUR = "http://"+LAN_IP+"/sensordata_hourly.json/";
+    private static final String LAN_URL_INSTANT = "http://"+LAN_IP+"/sensordata_instant.json/";
 
     public static URL buildUrlForLocation(String latitude, String longitude) {
 
@@ -51,21 +55,37 @@ public class NetworkUtils {
     }
 
     public static URL buildUrlForWeather(int forecastType, String location) {
-        String combinedURL;
         String requestScheme;
+        Uri builtUri = null;
 
         if (forecastType == 0) {
             requestScheme = WEATHERDB_BASE_URL_12HOURS;
-        } else {
+            builtUri = Uri.parse(requestScheme+location).buildUpon()
+                    .appendQueryParameter(PARAM_API_KEY, API_KEY)
+                    .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
+                    .build();
+        } else if (forecastType == 1){
             requestScheme = WEATHERDB_BASE_URL_1HOUR;
+            builtUri = Uri.parse(requestScheme+location).buildUpon()
+                    .appendQueryParameter(PARAM_API_KEY, API_KEY)
+                    .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
+//                .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
+                    .build();
+        } else if (forecastType == 2) {
+            requestScheme = LAN_URL_1HOUR;
+            builtUri = Uri.parse(requestScheme).buildUpon().build();
+        } else if (forecastType == 3) {
+            requestScheme = LAN_URL_INSTANT;
+            builtUri = Uri.parse(requestScheme).buildUpon().build();
+        } else {
+            requestScheme = WEATHERDB_BASE_URL_1HOUR; // default
+            builtUri = Uri.parse(requestScheme+location).buildUpon()
+                    .appendQueryParameter(PARAM_API_KEY, API_KEY)
+                    .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
+                    .build();
         }
 
-        combinedURL = requestScheme+location;
-        Uri builtUri = Uri.parse(combinedURL).buildUpon()
-                .appendQueryParameter(PARAM_API_KEY, API_KEY)
-                .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
-//                .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
-                .build();
+        // another requestScheme: use ngrok-generated url for Pi server
 
         URL url = null;
         try {

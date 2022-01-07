@@ -29,31 +29,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/* threadpool types
-*
-* fixed thread pool: threads fetch, execute tasks from a synchronized queue.
-*
-* cached thread pool: synchronous queue can hold only one task. the pool looks for a free thread to
-* do task; if no free thread available, it will create a new one, and kill threads idle for >60 secs
-*
-* scheduled thread pool: can schedule tasks to be done in a queue. tasks can be done at a delay, or
-* at some frequency. the tasks are distributed in the pool based on when they should be executed.
-*
-* single threaded executor: size of pool is 1. remake thread killed due to exceptions. fetches and
-* executes tasks submitted to queue sequentially. (n) task finishes before (n+1) taken by thread.
+
+/* Background execution module. Takes care of:
+* fetching location information from android GPS module,
+* fetching "location code" and weather data from Accuweather API
+* formatting and storing data in location and weather database
+* maintaining data stored in the weather database
 *
 * */
-
-/* How to avoid storing (or reading) duplicate weather points? Do it somewhere in the process flow.
-* Prior to every network request, check: was data requested FOR THIS HOUR? was data requested
-* FOR THE NEXT TWELVE HOURS? this may need a "checkbox" data structure; cleared and ticket on an
-* hourly basis, and two boxes cleared/ticked on a daily basis.
-*
-* Prior to caching or prior to network request, check contents of the database if it contains:
-* an hourly point for this hour, or a twelve-hour point for this hour. if yes, do not cache/request.
-*
-* Prior to drawing, skip duplicates or eliminate duplicates based on two metrics: time, and type.
-*  */
 
 public class RemoteDataFetchModel {
     private static final String TAG = "RemoteDataFetchModel";
@@ -142,8 +125,25 @@ public class RemoteDataFetchModel {
                             false, false));
                 }
             }
-            // ----- end startup tasks
 
+            /* temperature sensor fetching, should also be scheduled (check if tasks succeed): */
+                // formulate WLAN url - is it well-formed?
+                // create new contact sensor task, submit to network executor - can connection be opened?
+                // get the task result/response - is it json?
+                // parse the json response - format issues?
+            if (dataNeedsFetching(TEMPERATURE_SENSOR)) {
+                /* get hourly temperature sensor data */
+                List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR, defaultHomeLocation,
+                        "successfully obtained hourly sensor temperature from LAN.");
+
+                /* cache it */
+                if (sensorWeatherList != null) {
+                    setAnalyticsToWeatherData(sensorWeatherList, defaultHomeLocation.getLocalizedName(), UNDER_24H, TEMPERATURE_SENSOR);
+                    cachingExecutor.submit(new CacheDataInDbsTask(sensorWeatherList, weatherDaoReference,
+                            false, false));
+                }
+            }
+            // ----- end startup tasks
 
 
             // ----- periodic tasks: require RxJava(?) to operate on data in the background
@@ -152,6 +152,16 @@ public class RemoteDataFetchModel {
             // ----- end periodic tasks
         }
         return instance;
+    }
+
+    /* (not implemented) public method for user-prompted update of instant sensor reading */
+    public static synchronized void updateSensorReadingOnPrompt() {
+        serviceExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "run: submitted runnable for sensor reading upon user request.");
+            }
+        });
     }
 
     private static boolean dataNeedsFetching(Integer dataCategory) {
@@ -256,7 +266,7 @@ public class RemoteDataFetchModel {
         String weatherResponse;
         List<Weather> weatherList;
 
-        /* forecastType: 0, 12hour; 1, 1hour. */
+        /* forecastType: 0, 12hour; 1, 1hour; 2, sensor 1hour */
 //        Log.d(TAG, "getForecastFromNetwork: building URL with location "+location.getLocation());
         URL networkWeatherUrl = NetworkUtils.buildUrlForWeather(forecastType, location.getLocation());
         Future<String> initialWeatherTask = networkExecutor

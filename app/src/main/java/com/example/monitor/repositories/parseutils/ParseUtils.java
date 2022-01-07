@@ -10,14 +10,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-/* JSON key strings specifically for accuweather JSON objects */
+/* JSON key strings specifically for accuweather JSON objects, or local sensors */
 public class ParseUtils {
     private static final String TAG = "ParseUtils: ";
 
-    /* JSON parse for weather; always returns a list because it may operate on multiple returns
-    * from accuweather API or raspberry sensor */
+    /* JSON parse for weather, may return one or more data points from accuweather API or sensor */
     public static List<Weather> parseWeatherJSON(String weatherSearchResults) {
         List<Weather> weatherArrayList = new ArrayList<Weather>();
         if (weatherSearchResults != null) {
@@ -31,6 +31,13 @@ public class ParseUtils {
 
                     /* set the data obtained from the network response; not resultant analytical data */
                     JSONObject singleEntry = results.getJSONObject(i);
+
+                    /* check if JSON contains error msg */
+                    if (singleEntry.has("Message") && singleEntry.has("Code")) {
+                        Log.i(TAG, "parseWeatherJSON: ERROR RESPONSE: "+singleEntry.get("Message"));
+                        return null;
+                    }
+
                     String time = singleEntry.getString("DateTime");
                     weather.setTime(time);
 
@@ -41,8 +48,6 @@ public class ParseUtils {
                     String tempVal = temperatureObj.getString("Value");
                     weather.setCelsius(tempVal);
 
-
-
                     /* further object decomposition if "detailed" url query was done:
                      * humidity
                      * wet bulb temp
@@ -51,19 +56,13 @@ public class ParseUtils {
                      * rain probability
                      * etc */
 
-
                     weatherArrayList.add(weather);
                 }
 
                 /* development info only: code prints log info  */
-//                Iterator iter = weatherArrayList.iterator();
-//                while (iter.hasNext()) {
-//                    Weather weatherEntryInIter = (Weather) iter.next();
-//                    Log.i(TAG, "onPostExecute: time: "+weatherEntryInIter.getTime() + " " +
-//                            "Temperature: "+weatherEntryInIter.getCelsius() + " " +
-//                            "Link: "+weatherEntryInIter.getLink());
-//                }
-
+/*
+                Iterator iter = weatherArrayList.iterator(); while (iter.hasNext()) {Weather weatherEntryInIter = (Weather) iter.next(); Log.i(TAG, "onPostExecute: time: "+weatherEntryInIter.getTime() + " " + "Temperature: "+weatherEntryInIter.getCelsius() + " " + "Link: "+weatherEntryInIter.getLink()); }
+*/
                 return weatherArrayList;
 
             } catch (JSONException e) {
@@ -89,6 +88,12 @@ public class ParseUtils {
                 /* Location request: response is an object */
                 JSONObject result = new JSONObject(locationSearchResults);
                 JSONObject geopositionObj = result.getJSONObject("GeoPosition");
+
+                /* check if JSON contains error msg */
+                if (geopositionObj.has("Message") && geopositionObj.has("Code")) {
+                    Log.i(TAG, "parseLocationJSON: ERROR RESPONSE: "+geopositionObj.get("Message"));
+                    return null;
+                }
 
                 latitude = geopositionObj.getString("Latitude");
                 longitude = geopositionObj.getString("Longitude");
