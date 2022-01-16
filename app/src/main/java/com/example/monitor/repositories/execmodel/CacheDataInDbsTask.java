@@ -79,7 +79,8 @@ public class CacheDataInDbsTask implements Callable<String> {
             weatherDaoReference.update(weatherEntryInIter);
         }
 
-        Log.d(TAG, "cacheWeatherDataListIteratively: after iterative update, weather list:");
+        if (printDataInfo) {
+            Log.d(TAG, "cacheWeatherDataListIteratively: weather list:");}
         List<Weather> weatherListNonLive = weatherDaoReference.getAllWeatherPointsNonLive();
         Iterator readiter = weatherListNonLive.iterator();
         while (readiter.hasNext()) {
@@ -114,7 +115,7 @@ public class CacheDataInDbsTask implements Callable<String> {
                     return null;
                 }
             } else {
-                Log.d(TAG, "cacheLocationData: getLocationTableNonLive() returned null, do delete+insert");
+
                 if (this.monitorLocationList == null) {
                     this.monitorLocationList = new ArrayList<>();
                     this.monitorLocationList.add(location);
@@ -122,13 +123,10 @@ public class CacheDataInDbsTask implements Callable<String> {
                 locationDaoReference.deleteLocationTable();
                 locationDaoReference.insertLocationList(monitorLocationList);
             }
-
-            Log.d(TAG, "Location data should be updated now.");
             return null;
         }
         
         if (weatherList != null) {
-            Log.d(TAG, "call: List of weather data to be cached.");
             if (storeWeatherDataIteratively) {
                 cacheWeatherDataListIteratively(weatherList);
             } else {
@@ -138,7 +136,6 @@ public class CacheDataInDbsTask implements Callable<String> {
         }
 
         if (weatherDataPoint != null){
-            Log.d(TAG, "call: single weather data point to be cached.");
             cacheWeatherDataPoint(weatherDataPoint);
         }
 

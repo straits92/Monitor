@@ -31,10 +31,14 @@ public class NetworkUtils {
     private static final String PARAM_LOC = "q";
     private static final String PARAM_DETAILS = "details";
 
-    /* hourly requests towards LAN server on Raspberry Pi connected to sensor */
-    private static final String LAN_IP = "192.168.1.157";
-    private static final String LAN_URL_1HOUR = "http://"+LAN_IP+"/sensordata_hourly.json/";
-    private static final String LAN_URL_INSTANT = "http://"+LAN_IP+"/sensordata_instant.json/";
+    /* hourly requests towards LAN server on Raspberry Pi connected to sensor, tunneled via ngrok */
+    private static final String LAN_IP_PI_ZERO = "192.168.1.157";
+    private static final String LAN_IP_PI_4B = "192.168.1.158";
+    private static final String NGROK_TUNNEL_LINK_TEMPORARY = "http://7484-178-220-204-81.ngrok.io/";
+    private static final String NGROK_URL_1HOUR = NGROK_TUNNEL_LINK_TEMPORARY+"sensordata_hourly.json";
+    private static final String NGROK_URL_INSTANT = NGROK_TUNNEL_LINK_TEMPORARY+"sensordata_instant.json";
+    private static final String LAN_URL_1HOUR = "http://"+LAN_IP_PI_4B+"/sensordata_hourly.json";
+    private static final String LAN_URL_INSTANT = "http://"+LAN_IP_PI_4B+"/sensordata_instant.json";
 
     public static URL buildUrlForLocation(String latitude, String longitude) {
 
@@ -72,10 +76,10 @@ public class NetworkUtils {
 //                .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
                     .build();
         } else if (forecastType == 2) {
-            requestScheme = LAN_URL_1HOUR;
+            requestScheme = NGROK_URL_1HOUR; // LAN_URL_1HOUR
             builtUri = Uri.parse(requestScheme).buildUpon().build();
         } else if (forecastType == 3) {
-            requestScheme = LAN_URL_INSTANT;
+            requestScheme = NGROK_URL_1HOUR; // LAN_URL_INSTANT
             builtUri = Uri.parse(requestScheme).buildUpon().build();
         } else {
             requestScheme = WEATHERDB_BASE_URL_1HOUR; // default
@@ -84,8 +88,6 @@ public class NetworkUtils {
                     .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
                     .build();
         }
-
-        // another requestScheme: use ngrok-generated url for Pi server
 
         URL url = null;
         try {

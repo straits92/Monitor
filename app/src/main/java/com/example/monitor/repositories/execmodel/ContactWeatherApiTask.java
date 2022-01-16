@@ -3,6 +3,7 @@ package com.example.monitor.repositories.execmodel;
 import android.util.Log;
 
 import com.example.monitor.repositories.networkutils.NetworkUtils;
+import com.example.monitor.repositories.parseutils.JSONUtils;
 
 import java.io.IOException;
 import java.net.URL;
@@ -29,6 +30,12 @@ public class ContactWeatherApiTask implements Callable<String> {
             e.printStackTrace();
         }
 
-        return response;
+        // check if valid json response
+        if (JSONUtils.isJSONValid(response) == true)
+            return response;
+        else {
+            Log.i(TAG, "Response is not in valid JSON format.");
+            return null;
+        }
     }
 }

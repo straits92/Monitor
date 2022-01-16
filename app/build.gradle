@@ -39,6 +39,9 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
+    /* for json check */
+    implementation 'com.google.code.gson:gson:2.8.9'
+
     /* MPAndroidChart library for graphing */
     implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
     /* had to be included in settings.gradle */

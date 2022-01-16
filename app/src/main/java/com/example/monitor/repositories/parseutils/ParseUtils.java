@@ -32,7 +32,7 @@ public class ParseUtils {
                     /* set the data obtained from the network response; not resultant analytical data */
                     JSONObject singleEntry = results.getJSONObject(i);
 
-                    /* check if JSON contains error msg */
+                    /* check if JSON contains error msg as defined by Accuweather API */
                     if (singleEntry.has("Message") && singleEntry.has("Code")) {
                         Log.i(TAG, "parseWeatherJSON: ERROR RESPONSE: "+singleEntry.get("Message"));
                         return null;
@@ -48,18 +48,12 @@ public class ParseUtils {
                     String tempVal = temperatureObj.getString("Value");
                     weather.setCelsius(tempVal);
 
-                    /* further object decomposition if "detailed" url query was done:
-                     * humidity
-                     * wet bulb temp
-                     * wind
-                     * uv
-                     * rain probability
-                     * etc */
+                    /* further weather info can be extracted from object */
 
                     weatherArrayList.add(weather);
                 }
 
-                /* development info only: code prints log info  */
+                /* development info only: code prints log info, do for sensor  */
 /*
                 Iterator iter = weatherArrayList.iterator(); while (iter.hasNext()) {Weather weatherEntryInIter = (Weather) iter.next(); Log.i(TAG, "onPostExecute: time: "+weatherEntryInIter.getTime() + " " + "Temperature: "+weatherEntryInIter.getCelsius() + " " + "Link: "+weatherEntryInIter.getLink()); }
 */

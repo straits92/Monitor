@@ -1,3 +1,7 @@
+/* Weather member "category" states if data point is a 12-hour data point, an hourly data point,
+ * or an hourly data point fetched from raspberry sensor; these classifications of data points
+ * are aggregated in the same database chronologically, but routed into separate displays/trends.
+ * one coherent display is done for one location; currently, just the "current" location */
 package com.example.monitor.models;
 
 import androidx.room.Entity;
@@ -45,8 +49,8 @@ public class Weather {
     private String celsius;
     private String link;
     private String time;
-    private String location; /* which location the data is relevant to */
-    private Integer persistence; /* 0: younger than 24h; 1: younger than a week; 2: up for deletion, older than a week */
+    private String location; /* which location the data is relevant to. this is the string name of the city.  */
+    private Integer persistence; /* 0: younger than 48h; 1: younger than a week; 2: up for deletion, older than a week */
     private Integer category; /* 1: hourly, 0: 12h, 2: raspberry sensor */
     private long timeInMillis;
     /* add humidity etc ... */
