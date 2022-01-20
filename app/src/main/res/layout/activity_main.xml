@@ -7,17 +7,16 @@
     tools:context=".MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/idLocationsContainer"
-        android:layout_width="150dp"
-        android:layout_height="54dp"
+        android:id="@+id/idTopOptionsContainer"
+        android:layout_width="346dp"
+        android:layout_height="73dp"
         android:layout_marginStart="20dp"
         android:layout_marginTop="20dp"
-        android:layout_marginEnd="220dp"
+        android:layout_marginEnd="20dp"
         android:background="#E91E63"
         android:outlineProvider="paddedBounds"
         android:visibility="visible"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -27,27 +26,51 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="5dp"
             android:layout_marginTop="5dp"
+            android:layout_marginBottom="5dp"
             android:text="@string/homeLocation"
             android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="223dp"
+            android:layout_height="57dp"
+            android:layout_marginStart="180dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="70dp"
+            android:layout_marginBottom="5dp"
+            android:hint="@string/dropDownTitle"
+            app:layout_constraintBaseline_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+            <!--app:startIconDrawable="@drawable/dropDownPlaceholder"-->
+
+            <AutoCompleteTextView
+                android:id="@+id/autoCompleteTextView"
+                android:layout_width="199dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:inputType="none"
+                tools:text="Placeholder" />
+        </com.google.android.material.textfield.TextInputLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/displayInterfaceContainer"
-        android:layout_width="381dp"
-        android:layout_height="515dp"
+        android:layout_width="380dp"
+        android:layout_height="525dp"
         android:layout_marginStart="15dp"
-        android:layout_marginTop="90dp"
         android:layout_marginEnd="15dp"
-        android:layout_marginBottom="70dp"
+        android:layout_marginBottom="30dp"
         android:background="#C83567"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.52"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintStart_toStartOf="parent">
 
 
         <com.github.mikephil.charting.charts.LineChart
@@ -55,40 +78,59 @@
             android:layout_width="365dp"
             android:layout_height="305dp"
             android:layout_marginStart="15dp"
-            android:layout_marginTop="115dp"
+            android:layout_marginTop="90dp"
             android:layout_marginEnd="15dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <RadioGroup
-            android:id="@+id/selectDisplayFormat"
-            android:layout_width="128dp"
-            android:layout_height="42dp"
-            android:layout_marginTop="432dp"
-            android:layout_marginEnd="236dp"
-            android:background="#673AB7"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="@+id/recyclerView" />
 
         <Button
             android:id="@+id/refreshData"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="32dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="248dp"
+            android:layout_marginBottom="60dp"
             android:text="@string/refreshData"
             android:textColor="@color/white"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:id="@+id/getSensorReading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="248dp"
+            android:layout_marginBottom="10dp"
+            android:text="@string/getSensorReading"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/refreshData" />
+
+        <TextView
+            android:id="@+id/instantSensorReading"
+            android:layout_width="107dp"
+            android:layout_height="26dp"
+            android:layout_marginStart="15dp"
+            android:layout_marginBottom="10dp"
+            android:background="@color/white"
+            android:text="@string/current_sensor_reading"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/getSensorReading" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"
-            android:layout_width="336dp"
-            android:layout_height="93dp"
+            android:layout_width="335dp"
+            android:layout_height="82dp"
             android:layout_marginStart="15dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="10dp"
             android:layout_marginEnd="15dp"
             android:background="#EF7BA2"
             app:layout_constraintEnd_toEndOf="parent"
@@ -105,98 +147,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/dataGroupsContainer"
-        android:layout_width="150dp"
-        android:layout_height="55dp"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginEnd="20dp"
-        android:background="#AE2727"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0">
-
-        <Button
-            android:id="@+id/dataType1"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="5dp"
-            android:layout_marginTop="5dp"
-            android:text="@string/dataType1"
-            android:textSize="12sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <TextView
-        android:id="@+id/firstHeader"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/firstHeader"
-        android:textColor="#050505"
-        android:textSize="15sp"
-        app:layout_constraintBottom_toTopOf="@+id/idLocationsContainer"
-        app:layout_constraintStart_toStartOf="@+id/idLocationsContainer" />
-
-<!--    <com.google.android.material.floatingactionbutton.FloatingActionButton-->
-<!--        android:id="@+id/floatingActionButton"-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_marginStart="32dp"-->
-<!--        android:layout_marginTop="644dp"-->
-<!--        android:clickable="true"-->
-<!--        android:contentDescription="@string/describeFAB"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintTop_toTopOf="parent"-->
-<!--        app:srcCompat="@drawable/ic_launcher_background" />-->
-
-    <TextView
-        android:id="@+id/firstHeader2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/secondHeader"
-        android:textColor="#050505"
-        android:textSize="15sp"
-        app:layout_constraintBottom_toTopOf="@+id/dataGroupsContainer"
-        app:layout_constraintStart_toStartOf="@+id/dataGroupsContainer" />
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/constraintLayout"
-        android:layout_width="376dp"
-        android:layout_height="77dp"
-        android:layout_marginStart="15dp"
-        android:layout_marginEnd="15dp"
-        android:layout_marginBottom="15dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <TextView
-            android:id="@+id/textView"
-            android:layout_width="107dp"
-            android:layout_height="26dp"
-            android:layout_marginStart="15dp"
-            android:layout_marginTop="15dp"
-            android:text="sensor_data"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <Button
-            android:id="@+id/button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="15dp"
-            android:layout_marginEnd="15dp"
-            android:text="[refresh sensor data]"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -65,9 +65,8 @@ public class RecyclerWeatherAdapter extends RecyclerView.Adapter<RecyclerWeather
         TextView timeText;
         TextView timeMillis;
         TextView timeHours;
-
         TextView temperatureText;
-        TextView linkText;
+//        TextView linkText;
 
         ConstraintLayout entryParentLayout;
         public WeatherViewHolder(@NonNull View itemView) {
@@ -77,7 +76,7 @@ public class RecyclerWeatherAdapter extends RecyclerView.Adapter<RecyclerWeather
             timeHours = itemView.findViewById(R.id.idTimeHours);
 
             temperatureText = itemView.findViewById(R.id.idTemp);
-            linkText = itemView.findViewById(R.id.idLinkInfo);
+//            linkText = itemView.findViewById(R.id.idLinkInfo);
             entryParentLayout = itemView.findViewById(R.id.idListEntryContainer);
         }
     }

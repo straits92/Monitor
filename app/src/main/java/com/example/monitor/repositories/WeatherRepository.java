@@ -88,6 +88,10 @@ public class WeatherRepository {
         remoteModel.updateLocationOnPrompt();
     }
 
+    public void updateSensorReadingOnPrompt() {
+        remoteModel.updateSensorReadingOnPrompt();
+    };
+
 
     /* METHODS USED IN VIEWMODEL */
     /* Database operation wrappers calling Dao methods in bg threads.

@@ -64,4 +64,8 @@ public class MainActivityViewModel extends AndroidViewModel {
         weatherRepository.updateLocationOnPrompt();
     }
 
+    public void updateSensorReadingOnPrompt() {
+        weatherRepository.updateSensorReadingOnPrompt();
+    }
+
 }

@@ -19,8 +19,11 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.monitor.adapters.RecyclerWeatherAdapter;
@@ -39,6 +42,7 @@ import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.utils.EntryXComparator;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.lang.reflect.Array;
 import java.text.DateFormat;
@@ -68,18 +72,30 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private ProgressBar progressBar;
     private Button homeLocation;
+    private Button sensorQuery;
+    private TextView sensorQueryOutput;
     private LineChart temperatureLineChart;
+    private AutoCompleteTextView dropDownListParams;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        /* set up dropdown list based on hardcoded parameters in ~/res/values/strings */
+        String[] monitorParameters = getResources().getStringArray(R.array.monitoring_parameters);
+        ArrayAdapter dropDownListParametersAdapter = new ArrayAdapter(this,
+                R.layout.dropdown_item_monitoring_parameter, monitorParameters);
+        dropDownListParams = findViewById(R.id.autoCompleteTextView);
+        dropDownListParams.setAdapter(dropDownListParametersAdapter);
+
         /* initiate display elements */
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
         homeLocation = findViewById(R.id.homeLocation); /* should have an onClick too */
         temperatureLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
+        sensorQuery = findViewById(R.id.getSensorReading);
+        sensorQueryOutput = findViewById(R.id.instantSensorReading);
 
         /* initialize recycler view used for debugging */
         LinearLayoutManager llm = new LinearLayoutManager(this);
@@ -109,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
                 xAxis.setAxisMaximum(48);
                 xAxis.setAxisMinimum(0);
 //                xAxis.setGranularityEnabled(true);
-//                xAxis.setGranularity(48/8);
+//                xAxis.setGranularity(48/4);
 
                 YAxis yAxisLeft = temperatureLineChart.getAxisLeft();
                 yAxisLeft.setAxisMaximum(40);
@@ -193,6 +209,19 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        sensorQuery.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "onClick: fetch latest sensor reading at user prompt.");
+                temperatureViewModel.updateSensorReadingOnPrompt();
+
+                // get the value from the execution model; time of sensor reading, and value
+
+                // bind it to the sensor reading display
+//                sensorQueryOutput.setText();
+            }
+        });
+
         Log.d(TAG, "onCreate: started.");
 
         /* DUMMY ACTION: for data update progress bar tied to RecyclerView */
@@ -226,8 +255,8 @@ public class MainActivity extends AppCompatActivity {
                                                 List<Entry> sensorWeatherList) {
         long startOfYesterday = dailyTimeOrigin - 86400000; // a day in millis is 60*60*24*1000
         String currentSelectedLocation = (String) homeLocation.getText();
-        Log.d(TAG, "separateWeatherDataTrendsFixed: entries to be generated for each data " +
-                "point, all trends, location: "+currentSelectedLocation);
+//        Log.d(TAG, "separateWeatherDataTrendsFixed: entries to be generated for each data " +
+//                "point, all trends, location: "+currentSelectedLocation);
 
         Iterator iter = weathers.iterator();
         while (iter.hasNext()) {

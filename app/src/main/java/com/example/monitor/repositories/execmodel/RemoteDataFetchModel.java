@@ -124,6 +124,16 @@ public class RemoteDataFetchModel {
             @Override
             public void run() {
                 Log.d(TAG, "run: submitted runnable for sensor reading upon user request.");
+
+                // network request for sensordata_instant.json
+
+                // maybe no need to cache it to db at all?
+
+                // get the datapoint value
+
+                // return the requested string data; the value, and the time of sensor reading
+
+                // so this needs to be a callable
             }
         });
     }
@@ -454,9 +464,9 @@ public class RemoteDataFetchModel {
                                                                 Integer howLongStored) {
         Log.i(TAG, "setUpPeriodicWeatherQueries: to be set up.");
         /* define initial delay of each task; they should not compete for the same thread. */
-        Integer initialDelayHourly = 20;
+        Integer initialDelayHourly = 30;
         Integer initialDelayTwelveHour = 40;
-        Integer initialDelayMaintenance = 10;
+        Integer initialDelayMaintenance = 5;
 
         /* set up the hourly weather query; should cancel if no response */
         scheduledExecutor.scheduleAtFixedRate(new Runnable() {
@@ -507,7 +517,7 @@ public class RemoteDataFetchModel {
                 }
 
             }
-        }, initialDelayHourly, 300, TimeUnit.SECONDS);
+        }, initialDelayHourly, 1200, TimeUnit.SECONDS);
 
         /* set up the 12 hour weather query; may be done twice a day*/
         scheduledExecutor.scheduleAtFixedRate(new Runnable() {
@@ -584,8 +594,8 @@ public class RemoteDataFetchModel {
             public List<Weather> call() throws Exception {
                 List<Weather> weatherListNonLive = weatherDaoReference.getAllWeatherPointsNonLive();
                 if (weatherListNonLive != null){
-                    Log.d(TAG, "getForecastFromDbNonBlocking: weatherListNonLive size: "
-                            +weatherListNonLive.size());
+//                    Log.d(TAG, "getForecastFromDbNonBlocking: list size: "
+//                            +weatherListNonLive.size());
                     return weatherListNonLive;
                 } else {
                     Log.d(TAG, "FATAL: getForecastFromDbNonBlocking: querying locationDb " +
