@@ -16,6 +16,7 @@
         android:background="#E91E63"
         android:outlineProvider="paddedBounds"
         android:visibility="visible"
+        app:circularflow_radiusInDP="20dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">

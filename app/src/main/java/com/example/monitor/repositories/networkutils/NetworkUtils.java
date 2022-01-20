@@ -37,7 +37,7 @@ public class NetworkUtils {
     private static final String LAN_URL_1HOUR = "http://"+LAN_IP_PI_4B+"/sensordata_hourly.json";
     private static final String LAN_URL_INSTANT = "http://"+LAN_IP_PI_4B+"/sensordata_instant.json";
 
-    private static final String NGROK_TUNNEL_LINK_TEMPORARY = "http://8ec5-178-220-204-42.ngrok.io/";
+    private static final String NGROK_TUNNEL_LINK_TEMPORARY = "http://3a3f-178-220-204-42.ngrok.io/";
     private static final String NGROK_URL_1HOUR = NGROK_TUNNEL_LINK_TEMPORARY+"sensordata_hourly.json";
     private static final String NGROK_URL_INSTANT = NGROK_TUNNEL_LINK_TEMPORARY+"sensordata_instant.json";
 
