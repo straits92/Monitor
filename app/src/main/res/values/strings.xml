@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Monitor</string>
     <string name="homeLocation">Home</string>
-    <string name="refreshData">Refresh Data</string>
+    <string name="refreshData">Refresh [nOK]</string>
     <string name="dataType1">Temperature</string>
     <string name="dataType2">Humidity (empty)</string>
     <string name="firstHeader">Location</string>
@@ -12,7 +12,7 @@
     <string name="unitSelection">unit selection</string>
     <string name="dropDownTitle">Selected Parameter</string>
     <string name="getSensorReading">Sensor query</string>
-    <string name="current_sensor_reading">val</string>
+    <string name="current_sensor_reading">placeholder value</string>
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>

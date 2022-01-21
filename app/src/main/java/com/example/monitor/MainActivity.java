@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
         /* initiate display elements */
         recyclerView = findViewById(R.id.recyclerView);
-        progressBar = findViewById(R.id.progressBar);
+//        progressBar = findViewById(R.id.progressBar);
         homeLocation = findViewById(R.id.homeLocation); /* should have an onClick too */
         temperatureLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
         sensorQuery = findViewById(R.id.getSensorReading);
@@ -121,11 +121,11 @@ public class MainActivity extends AppCompatActivity {
 
                 /* create fixed chart: 0 to 48 hours (yesterday and today), +40, -20 degrees C */
                 XAxis xAxis = temperatureLineChart.getXAxis();
-                xAxis.setLabelCount(8);
+//                xAxis.setLabelCount(8);
                 xAxis.setAxisMaximum(48);
                 xAxis.setAxisMinimum(0);
-//                xAxis.setGranularityEnabled(true);
-//                xAxis.setGranularity(48/4);
+                xAxis.setGranularityEnabled(true);
+                xAxis.setGranularity(48/4);
 
                 YAxis yAxisLeft = temperatureLineChart.getAxisLeft();
                 yAxisLeft.setAxisMaximum(40);
