@@ -1,7 +1,6 @@
 package com.example.monitor.repositories.networkutils;
 
 import android.net.Uri;
-import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,14 +31,19 @@ public class NetworkUtils {
     private static final String PARAM_DETAILS = "details";
 
     /* hourly requests towards LAN server on Raspberry Pi connected to sensor, tunneled via ngrok */
+    private static final String SUBDIR_HOURLY = "/sensordata_hourly.json";
+    private static final String SUBDIR_INSTANT = "/sensordata_instant.json";
+
+    /* LAN with static IPs */
     private static final String LAN_IP_PI_ZERO = "192.168.1.157";
     private static final String LAN_IP_PI_4B = "192.168.1.158";
-    private static final String LAN_URL_1HOUR = "http://"+LAN_IP_PI_4B+"/sensordata_hourly.json";
-    private static final String LAN_URL_INSTANT = "http://"+LAN_IP_PI_4B+"/sensordata_instant.json";
+    private static final String LAN_URL_1HOUR = "http://"+LAN_IP_PI_4B+SUBDIR_HOURLY;
+    private static final String LAN_URL_INSTANT = "http://"+LAN_IP_PI_4B+SUBDIR_INSTANT;
 
-    private static final String NGROK_TUNNEL_LINK_TEMPORARY = "http://05ce-178-220-205-175.ngrok.io/";
-    private static final String NGROK_URL_1HOUR = NGROK_TUNNEL_LINK_TEMPORARY+"sensordata_hourly.json";
-    private static final String NGROK_URL_INSTANT = NGROK_TUNNEL_LINK_TEMPORARY+"sensordata_instant.json";
+    /* Internet */
+    private static final String NGROK_TUNNEL_LINK_TEMP = "http://23d2-178-220-205-175.ngrok.io";
+    private static final String NGROK_URL_1HOUR = NGROK_TUNNEL_LINK_TEMP +SUBDIR_HOURLY;
+    private static final String NGROK_URL_INSTANT = NGROK_TUNNEL_LINK_TEMP +SUBDIR_INSTANT;
 
 
     public static URL buildUrlForLocation(String latitude, String longitude) {
@@ -68,13 +72,13 @@ public class NetworkUtils {
             requestScheme = WEATHERDB_BASE_URL_12HOURS;
             builtUri = Uri.parse(requestScheme+location).buildUpon()
                     .appendQueryParameter(PARAM_API_KEY, API_KEY)
-                    .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
+                    .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temp. in Celsius */
                     .build();
         } else if (forecastType == 1){
             requestScheme = WEATHERDB_BASE_URL_1HOUR;
             builtUri = Uri.parse(requestScheme+location).buildUpon()
                     .appendQueryParameter(PARAM_API_KEY, API_KEY)
-                    .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
+                    .appendQueryParameter(PARAM_METRIC_KEY, "true")
 //                .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
                     .build();
         } else if (forecastType == 2) {
@@ -87,7 +91,7 @@ public class NetworkUtils {
             requestScheme = WEATHERDB_BASE_URL_1HOUR; // default
             builtUri = Uri.parse(requestScheme+location).buildUpon()
                     .appendQueryParameter(PARAM_API_KEY, API_KEY)
-                    .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temperature in Celsius */
+                    .appendQueryParameter(PARAM_METRIC_KEY, "true")
                     .build();
         }
 
@@ -101,16 +105,14 @@ public class NetworkUtils {
         return url;
     }
 
-    /* should return the entire API response as a string; should be called in background thread */
+    /* return the entire API response as a string; called in background thread */
     public static String getResponseFromHttpUrl(URL url) throws IOException {
         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
         String tempStore = null;
         try {
             InputStream in = urlConnection.getInputStream();
-
             Scanner scanner = new Scanner(in);
             scanner.useDelimiter("\\A");
-
             boolean hasInput = scanner.hasNext();
             if (hasInput){
                 tempStore = scanner.next();
@@ -121,7 +123,6 @@ public class NetworkUtils {
         } finally {
             urlConnection.disconnect();
         }
-
     }
 
 }

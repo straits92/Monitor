@@ -48,9 +48,7 @@ public abstract class WeatherDatabase extends RoomDatabase {
         @Override
         public void onCreate(@NonNull SupportSQLiteDatabase db) {
             super.onCreate(db);
-
         }
     };
-
 
 }

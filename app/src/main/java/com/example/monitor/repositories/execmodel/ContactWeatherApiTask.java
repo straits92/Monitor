@@ -26,11 +26,12 @@ public class ContactWeatherApiTask implements Callable<String> {
             response = NetworkUtils.getResponseFromHttpUrl(requestUrl);
             Log.i(TAG, "response from API or LAN: " + response);
         } catch (IOException e){
-            Log.i(TAG, "fetching failed: maybe ran out of free API requests for the day; or LAN issues");
+            Log.i(TAG, "fetching failed: ran out of free API requests for the day; " +
+                    "or LAN issues");
             e.printStackTrace();
         }
 
-        // check if valid json response
+        /* check if valid json response */
         if (JSONUtils.isJSONValid(response) == true)
             return response;
         else {

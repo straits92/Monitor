@@ -22,10 +22,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 /* single source of truth for weather data */
-/* The repository should decide when to fetch data from which source. The fetching of data is NOT
-nominally done at the user's prompt. It is intended as a periodic background task. It should not
-primarily be triggered by the MainActivity, but such functionality may be wrapped for it. As such,
-the ViewModel does not govern data fetching execution logic in the background. */
 public class WeatherRepository {
     private static final String TAG = "WeatherRepository: ";
     private WeatherDao weatherDao;
@@ -33,32 +29,31 @@ public class WeatherRepository {
     private LiveData<List<Weather>> weatherDataEntries;
     private LiveData<List<MonitorLocation>> locationData;
 
-    /* has its own executor for single datapoint insertions via dummy fab */
-    private static ExecutorService executor;
-
     /* for fetching remote data via managed, scheduled execution */
     private RemoteDataFetchModel remoteModel;
 
     /* repository is aware if something is updating */
     private MutableLiveData<Boolean> isUpdating = new MutableLiveData<>();
 
+    /* package instant sensor reading into LiveData, separate from any db updates */
+    private MutableLiveData<String> instantSensorReading = new MutableLiveData<>();
+
     /* potential singleton alternative: return static instance via getInstance(application) */
     /* singleton pattern used to avoid having open connections to web servers, APIs, caches etc */
-    public WeatherRepository(Application application) { /* application is a subclass of context */
-        Log.d(TAG, "Constructor: repository to be instantiated!");
+    public WeatherRepository(Application application) {
         WeatherDatabase weatherDatabase  = WeatherDatabase.getInstance(application);
         LocationDatabase locationDatabase = LocationDatabase.getInstance(application);
         weatherDao = weatherDatabase.weatherDao();
         locationDao = locationDatabase.locationDao();
         weatherDataEntries = weatherDao.getAllWeatherPoints();
         locationData = locationDao.getLocationTable();
+        instantSensorReading.setValue("[n/a]C, [NO TIMESTAMP]");
 
         isUpdating.setValue(false); /* initial value for weather list */
-        executor = ExecutorHelper.getDatabaseExecutorInstance();
 
         /* Instantiate background execution model. Need a reference to application for GPS tasks */
-        remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application);
-
+        remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application,
+                instantSensorReading);
     }
 
     /* Room sets up this database operation to run on a bg thread, according to CodingInFlow. */
@@ -74,52 +69,16 @@ public class WeatherRepository {
         return isUpdating;
     }
 
-
-    /* wrapper interfaces for remote data, from remoteModel; both weather API and the Pi-sensor */
-    public void requestDataFromWeatherApi() {
-        // operate on some live data
-    }
-
-    public void requestDataFromSensors() {
-        // operate on some live data
-    }
-
     public void updateLocationOnPrompt() {
         remoteModel.updateLocationOnPrompt();
     }
 
     public void updateSensorReadingOnPrompt() {
         remoteModel.updateSensorReadingOnPrompt();
-    };
-
-
-    /* METHODS USED IN VIEWMODEL */
-    /* Database operation wrappers calling Dao methods in bg threads.
-    * Thread tasks should be private static classes, so that they don't reference the repository. */
-    public void insert(Weather weatherDataPoint) {
-        try {
-            this.insertWeatherDataPoint(weatherDataPoint);
-        } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 
-    /* DUMMY CODE: invoked in MainActivity via Fab button; works here but not in the abstract database */
-    public synchronized Void insertWeatherDataPoint(final Weather weatherEntity)
-            throws ExecutionException, InterruptedException {
-
-        Future<Void> task = executor.submit(new Callable<Void>() {
-            @Override
-            public Void call() {
-                Log.d(TAG, "call: insertWeatherDataPoint: inserted");
-                weatherDao.insert(weatherEntity);
-                /* a deliberate delay needed here to see the progress buffer */
-                isUpdating.postValue(false);
-                return null;
-            }
-        });
-
-        return task.get();
+    public MutableLiveData<String> getInstantSensorReading() {
+        return instantSensorReading;
     }
 
 }

@@ -1,6 +1,8 @@
 package com.example.monitor.viewmodels;
 
 import android.app.Application;
+import android.nfc.Tag;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -13,52 +15,42 @@ import com.example.monitor.repositories.WeatherRepository;
 
 import java.util.List;
 
-/* ViewModel for Temperature class */
+/* ViewModel for temperature data */
 public class MainActivityViewModel extends AndroidViewModel {
+    private static final String TAG = "ViewModel";
 
     /* observable data */
-    private final MutableLiveData<Boolean> isUpdating /*= new MutableLiveData<>()*/;
+    private final MutableLiveData<Boolean> isUpdating;
     private LiveData<List<Weather>> immutableWeatherDataEntries;
     private LiveData<List<MonitorLocation>> locationData;
+
+    /* package instant sensor reading into LiveData, separate from any db updates */
+    private MutableLiveData<String> instantSensorReading;
 
     /* repository module with which the ViewModel communicates */
     private WeatherRepository weatherRepository;
 
-    /* there should be no references to activity in ViewModel; but application context needed to
-    * pass to repository, needed to instantiate database  */
+    /* application context needed in repository, to instantiate database  */
     public MainActivityViewModel(@NonNull Application application) {
         super(application);
-//        if (mutableWeatherDataEntries != null) {
-//            return;
-//        }
-
-        /* weather repository object shouldn't need reference to UI? */
         weatherRepository = new WeatherRepository(application);
 
-        /* LiveData trip: Database -> Repository -> ViewModel -> MainActivity  */
+        /* LiveData flow: Database -> Repository -> ViewModel -> MainActivity  */
         immutableWeatherDataEntries = weatherRepository.getWeatherDataEntries();
         locationData = weatherRepository.getLocationData();
         isUpdating = weatherRepository.getIsUpdating();
-
+        instantSensorReading = weatherRepository.getInstantSensorReading();
     }
-
-    /* convert RxJava-maintained data from the repository, into LiveData (using LiveDataReactiveStreams?) */
 
     public LiveData<Boolean> getIsUpdating() {
         return isUpdating;
     }
 
-    /* for access to weather data */
     public LiveData<List<Weather>> getWeatherDataEntries() {
         return immutableWeatherDataEntries;
     }
 
     public LiveData<List<MonitorLocation>> getLocationData(){return locationData;};
-
-    public void insert(Weather weatherDataPoint) {
-        isUpdating.setValue(true); /* may also be set false here or in worker thread if possible */
-        weatherRepository.insert(weatherDataPoint);
-    }
 
     public void updateLocationOnPrompt() {
         weatherRepository.updateLocationOnPrompt();
@@ -67,5 +59,7 @@ public class MainActivityViewModel extends AndroidViewModel {
     public void updateSensorReadingOnPrompt() {
         weatherRepository.updateSensorReadingOnPrompt();
     }
+
+    public LiveData<String> getInstantSensorReading() { return instantSensorReading; }
 
 }

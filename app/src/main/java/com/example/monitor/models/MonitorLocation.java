@@ -16,16 +16,8 @@ public class MonitorLocation {
     private boolean isGpsAvailable;
     private Integer locationType; /* 0: home city; 1: variable, 2: ... */
 
-//    public MonitorLocation(String location, String localizedName, String latitude, String longitude, boolean isGpsAvailable) {
-//        this.location = location;
-//        this.localizedName = localizedName;
-//        this.latitude = latitude;
-//        this.longitude = longitude;
-//        this.isGpsAvailable = isGpsAvailable;
-//    }
-
-    /* to be rebuilt by android studio */
-    public MonitorLocation(String location, String localizedName, String latitude, String longitude, boolean isGpsAvailable, Integer locationType) {
+    public MonitorLocation(String location, String localizedName, String latitude, String longitude,
+                           boolean isGpsAvailable, Integer locationType) {
         this.location = location;
         this.localizedName = localizedName;
         this.latitude = latitude;

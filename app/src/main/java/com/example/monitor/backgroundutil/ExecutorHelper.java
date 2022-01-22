@@ -6,8 +6,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-/* the fact that it has static executor members, each with an associated static instantiator,
-* suggests that the attempt to create multiple single instantiators only returns the one */
+/* helper class for creating threads to do background tasks */
 public class ExecutorHelper {
     private static final String TAG = "ExecutorHelper";
 
@@ -30,42 +29,33 @@ public class ExecutorHelper {
 
     public static synchronized ExecutorService getNetworkRequestExecutorInstance(){
         if(networkRequestExecutorInstance == null){
-            Log.d(TAG, "networkRequestExecutor created.");
             networkRequestExecutorInstance = Executors.newSingleThreadExecutor();
             return networkRequestExecutorInstance;
         }
-        Log.d(TAG, "existing networkRequestExecutor returned.");
         return networkRequestExecutorInstance;
     }
 
     public static synchronized ExecutorService getDatabaseExecutorInstance(){
         if(databaseExecutorInstance == null){
-            Log.d(TAG, "databaseExecutorInstance created.");
             databaseExecutorInstance = Executors.newSingleThreadExecutor();
             return databaseExecutorInstance;
         }
-        Log.d(TAG, "existing databaseExecutorInstance returned.");
         return databaseExecutorInstance;
     }
 
     public static synchronized ExecutorService getServiceExecutorInstance(){
         if(serviceExecutor == null){
-            Log.d(TAG, "serviceExecutor created for miscellaneous tasks.");
             serviceExecutor = Executors.newSingleThreadExecutor();
             return serviceExecutor;
         }
-        Log.d(TAG, "existing serviceExecutor returned.");
         return serviceExecutor;
     }
 
     public static synchronized ExecutorService getGpsExecutorInstance(){
         if(gpsExecutorInstance == null){
-            Log.d(TAG, "gpsExecutorInstance created as cachedThreadPool; kill thread if no tasks for 60 seconds.");
             gpsExecutorInstance = Executors.newCachedThreadPool();
-
             return gpsExecutorInstance;
         }
-        Log.d(TAG, "existing gpsExecutorInstance returned.");
         return gpsExecutorInstance;
     }
 

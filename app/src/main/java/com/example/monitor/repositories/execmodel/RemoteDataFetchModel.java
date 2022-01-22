@@ -5,6 +5,7 @@ import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
+import androidx.lifecycle.MutableLiveData;
 
 import com.example.monitor.backgroundutil.ExecutorHelper;
 import com.example.monitor.databases.LocationDao;
@@ -42,6 +43,7 @@ import java.util.concurrent.TimeoutException;
 public class RemoteDataFetchModel {
     private static final String TAG = "RemoteDataFetchModel";
 
+    private static final Integer TEMPERATURE_SENSOR_INSTANT = 3;
     private static final Integer TEMPERATURE_SENSOR = 2;
     private static final Integer SINGLE_HOUR_DATA = 1;
     private static final Integer TWELVE_HOURS_DATA = 0;
@@ -49,6 +51,9 @@ public class RemoteDataFetchModel {
     private static final Integer UNDER_48H = 0;
     private static final Integer BETWEEN_48H_AND_WEEK = 1;
     private static final Integer MORE_THAN_A_WEEK = 2;
+
+    /* package instant sensor reading into LiveData, separate from any db updates */
+    private static MutableLiveData<String> instantSensorReading;
 
     private static RemoteDataFetchModel instance;
     private static WeatherDao weatherDaoReference;
@@ -63,15 +68,17 @@ public class RemoteDataFetchModel {
     private static ExecutorService gpsExecutor;
     private static ScheduledExecutorService scheduledExecutor;
 
-    /* singleton, instantiated in environment providing a data access object, reference to activity  */
+    /* singleton, instantiated in environment providing DAO and reference to activity  */
     public static RemoteDataFetchModel getInstance(WeatherDao weatherDao, LocationDao locationDao,
-                                                   Application application) {
+                                                   Application application,
+                                                   MutableLiveData<String> instantSensorReadingObj) {
         if (instance == null) {
             /* set up private members */
             instance = new RemoteDataFetchModel();
             weatherDaoReference = weatherDao;
             locationDaoReference = locationDao;
             applicationFromRepository = application;
+            instantSensorReading = instantSensorReadingObj;
 
             /* define scheduling parameters in seconds */
             Integer howLongVisible = 172800; /* 60 * 60 * 24 * 2 , 48H */
@@ -104,36 +111,40 @@ public class RemoteDataFetchModel {
             ArrayList<String> gpsLatLon = getGpsLatLon();
             MonitorLocation fetchedMonitorLocation = null;
             if (gpsLatLon != null) {
-                fetchedMonitorLocation = getLocationFromNetwork(0, gpsLatLon, defaultMonitorLocationList);
-                cachingExecutor.submit(new CacheDataInDbsTask(fetchedMonitorLocation, locationDaoReference));
+                fetchedMonitorLocation = getLocationFromNetwork(0, gpsLatLon,
+                        defaultMonitorLocationList);
+                cachingExecutor.submit(new CacheDataInDbsTask(fetchedMonitorLocation,
+                        locationDaoReference));
             } else {
                 Log.d(TAG, "getInstance: gpsLatLon is null; default to "
                         + defaultHomeLocation.getLocalizedName());
-                fetchedMonitorLocation = defaultHomeLocation;
             }
 
-            /* periodic request. pass: request frequency, data aging and visibility, deletion policy */
+            /* setup based on intervals for data aging + visibility, and deletion policy */
             setUpPeriodicWeatherQueries(howLongVisible, howLongStored); /* intervals in seconds */
         }
         return instance;
     }
 
-    /* (not implemented) public method for user-prompted update of instant sensor reading */
+    /* public method for user-prompted update of instant sensor reading */
     public static synchronized void updateSensorReadingOnPrompt() {
         serviceExecutor.submit(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "run: submitted runnable for sensor reading upon user request.");
-
-                // network request for sensordata_instant.json
-
-                // maybe no need to cache it to db at all?
-
-                // get the datapoint value
-
-                // return the requested string data; the value, and the time of sensor reading
-
-                // so this needs to be a callable
+                List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR_INSTANT,
+                        defaultHomeLocation,"successfully obtained instant sensor " +
+                                "temperature from LAN or ngrok URL.");
+                if (sensorWeatherList != null) {
+                    setAnalyticsToWeatherData(sensorWeatherList,
+                            defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR_INSTANT);
+                    String hms = sensorWeatherList.get(0).getTime().substring(11, 19);
+                    /* modify LiveData visible in MainActivity */
+                    instantSensorReading.postValue("["+sensorWeatherList.get(0).getCelsius()
+                            +"]C, ["+hms+"]");
+                } else {
+                    Log.i(TAG, "updateSensorReadingOnPrompt: sensor data returns null");
+                    instantSensorReading.postValue("[XXXX]C, [XXXXXXXX]");
+                }
             }
         });
     }
@@ -182,7 +193,7 @@ public class RemoteDataFetchModel {
                         && (weatherEntryInIter.getTimeInMillis() == startOfHour)
                         && (weatherEntryInIter.getLocation().equals(locationName))) {
                     Log.d(TAG, "dataNeedsFetching for this hour: NO, weather data type (sensor):"
-                            + dataCategory + "location:|" + locationName + "| is already present in db");
+                            + dataCategory + "location:|" + locationName + "| is present in db");
                     return false;
                 }
             } else {} /* other potential options */
@@ -212,7 +223,7 @@ public class RemoteDataFetchModel {
         });
     }
 
-    /* decoupling getCurrentLocation; GPS task */
+    /* GPS latitude and longitude task */
     public static synchronized ArrayList<String> getGpsLatLon() {
         ArrayList<String> gpsLatLon = null;
         Future<ArrayList<String>> gpsLatLonTask = gpsExecutor.submit(new GetGpsTask(applicationFromRepository));
@@ -230,7 +241,9 @@ public class RemoteDataFetchModel {
     }
 
     /* Accuweather API query to get actual location key */
-    public static synchronized MonitorLocation getLocationFromNetwork(Integer locationType, ArrayList<String> gpsLatLon, List<MonitorLocation> defaultMonitorLocationList) {
+    public static synchronized MonitorLocation getLocationFromNetwork(Integer locationType,
+                                                                      ArrayList<String> gpsLatLon,
+                                                                      List<MonitorLocation> defaultMonitorLocationList) {
         String locationResponse;
         URL locationUrl;
         MonitorLocation fetchedMonitorLocation = defaultMonitorLocationList.get(locationType);
@@ -262,7 +275,7 @@ public class RemoteDataFetchModel {
         String weatherResponse;
         List<Weather> weatherList = null;
 
-        /* forecastType: 0, 12hour; 1, 1hour; 2, sensor 1hour */
+        /* forecastType: 0, 12hour; 1, 1hour; 2, sensor 1hour; 3, sensor current reading */
         URL networkWeatherUrl = NetworkUtils.buildUrlForWeather(forecastType, location.getLocation());
         Future<String> initialWeatherTask = networkExecutor
                 .submit((Callable<String>) new ContactWeatherApiTask(networkWeatherUrl));
@@ -326,7 +339,7 @@ public class RemoteDataFetchModel {
             e.printStackTrace();
         }
         if (weatherList == null) {
-            Log.d(TAG, "maintainWeatherDatabase: weather data not fetched; no maintenance will be done. ");
+            Log.d(TAG, "maintainWeatherDatabase: data not fetched; no maintenance done. ");
             return;
         }
 

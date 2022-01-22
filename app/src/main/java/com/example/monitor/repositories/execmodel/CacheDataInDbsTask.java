@@ -33,14 +33,16 @@ public class CacheDataInDbsTask implements Callable<String> {
         this.locationDaoReference = locationDaoReference;
     }
 
-    public CacheDataInDbsTask(List<Weather> weatherList, WeatherDao weatherDaoReference, boolean shouldClearWeatherCache, boolean storeWeatherDataIteratively) {
+    public CacheDataInDbsTask(List<Weather> weatherList, WeatherDao weatherDaoReference,
+                              boolean shouldClearWeatherCache, boolean storeWeatherDataIteratively) {
         this.shouldClearWeatherCache = shouldClearWeatherCache;
         this.storeWeatherDataIteratively = storeWeatherDataIteratively;
         this.weatherList = weatherList;
         this.weatherDaoReference = weatherDaoReference;
     }
 
-    public CacheDataInDbsTask(Weather weatherDataPoint, WeatherDao weatherDaoReference, boolean shouldClearWeatherCache) {
+    public CacheDataInDbsTask(Weather weatherDataPoint, WeatherDao weatherDaoReference,
+                              boolean shouldClearWeatherCache) {
         this.shouldClearWeatherCache = shouldClearWeatherCache;
         this.weatherDataPoint = weatherDataPoint;
         this.weatherDaoReference = weatherDaoReference;
@@ -105,7 +107,8 @@ public class CacheDataInDbsTask implements Callable<String> {
 
         if (location != null) {
             Log.d(TAG, "call: location provided, to be cached");
-            List<MonitorLocation> listReferenceNonLive = locationDaoReference.getLocationTableNonLive();
+            List<MonitorLocation> listReferenceNonLive =
+                    locationDaoReference.getLocationTableNonLive();
 
             /* update logic intended to handle a 1-entry location list */
             if (listReferenceNonLive != null && listReferenceNonLive.size() > 0) {

@@ -49,14 +49,15 @@ public class Weather {
     private String celsius;
     private String link;
     private String time;
-    private String location; /* which location the data is relevant to. this is the string name of the city.  */
-    private Integer persistence; /* 0: younger than 48h; 1: younger than a week; 2: up for deletion, older than a week */
+    private String location; /* this is the string name of the city in which temperature measured  */
+    private Integer persistence; /* 0: less than 48h; 1: less than a week; 2: older than a week */
     private Integer category; /* 1: hourly, 0: 12h, 2: raspberry sensor */
     private long timeInMillis;
     /* add humidity etc ... */
 
 
-    public Weather(String celsius, String link, String time, String location, Integer persistence, Integer category, long timeInMillis) {
+    public Weather(String celsius, String link, String time, String location, Integer persistence,
+                   Integer category, long timeInMillis) {
         this.celsius = celsius;
         this.link = link;
         this.time = time;

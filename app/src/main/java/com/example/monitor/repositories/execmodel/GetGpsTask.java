@@ -36,40 +36,48 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
     public GetGpsTask(Application application) {
         applicationFromModel = application;
         passedLatLon = new ArrayList<>();
-        locationManager = (LocationManager) applicationFromModel.getSystemService(Context.LOCATION_SERVICE);
+        locationManager = (LocationManager) applicationFromModel
+                .getSystemService(Context.LOCATION_SERVICE);
     }
 
     @Override
     public ArrayList<String> call() throws Exception {
         /* check if Looper was prepared before; only ever call once within this thread */
         if (Looper.myLooper() == null) {
-            Log.d(TAG, "Looper.prepare() called once in order to run GPS task in background thread.");
+            Log.d(TAG, "Looper.prepare() called once to run GPS task in background thread.");
             Looper.prepare();
         }
 
-        if (ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                /*|| ActivityCompat.checkSelfPermission(applicationFromModel, Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED*/) {
+        if (ActivityCompat.checkSelfPermission(applicationFromModel,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(applicationFromModel,
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                /*|| ActivityCompat.checkSelfPermission(applicationFromModel,
+                Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED*/) {
             Log.d(TAG, "call: no permission to access GPS data, return null");
             return null;
         }
 
         Location gps_location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 //        network_loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        if(gps_location != null && gps_location.getTime() > Calendar.getInstance().getTimeInMillis() - 12000) { // 2 * 60 * 1000, define age of loc data, 2 minutes?
+        if(gps_location != null && gps_location.getTime()
+                > Calendar.getInstance().getTimeInMillis() - 12000) { // 2 * 60 * 1000, age of data
             final_location = gps_location;
             latitude = final_location.getLatitude();
             longitude = final_location.getLongitude();
             passedLatLon.add(0, latitude.toString());
             passedLatLon.add(1, longitude.toString());
-            Log.d(TAG, "call: got last known location; lat: "+latitude.toString()+"; lon: "+longitude.toString());
+            Log.d(TAG, "call: got last known location; lat: "+latitude.toString()
+                    +"; lon: "+longitude.toString());
             return passedLatLon;
         }
         else { /* AMBIGUOUS BEHAVIOUR WITH REQUESTING LOCATION UPDATES */
-            Log.d(TAG, "last known location returns null; need to requestLocationUpdates, but current behaviour is ambiguous, so the caller just defaults.");
+            Log.d(TAG, "last known location returns null; need to requestLocationUpdates, " +
+                    "but current behaviour is ambiguous, so the caller just defaults.");
 
             /* trigger LocationListener's callback onLocationChanged if location changed by >5km */
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 5000, this/*, Looper.getMainLooper()*/);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0,
+                    5000, this/*, Looper.getMainLooper()*/);
         }
 
         return null;
@@ -82,11 +90,10 @@ public class GetGpsTask implements Callable<ArrayList<String>>, LocationListener
     @Override
     public void onLocationChanged(@NonNull Location location) {
         if (location != null) {
-            Log.v("onLocationChanged:", ">>>>>callback with lat: "+location.getLatitude() + " lon: " + location.getLongitude()+">>>>>>>");
-
+            Log.v("onLocationChanged:", "callback with lat: "
+                    +location.getLatitude() + " lon: " + location.getLongitude());
             passedLatLon.add(0, latitude.toString());
             passedLatLon.add(1, longitude.toString());
-
             locationManager.removeUpdates(this);
         }
     }

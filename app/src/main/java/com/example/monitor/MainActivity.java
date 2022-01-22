@@ -74,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private Button homeLocation;
     private Button sensorQuery;
     private TextView sensorQueryOutput;
+    private TextView sensorQueryTimestamp;
     private LineChart temperatureLineChart;
     private AutoCompleteTextView dropDownListParams;
 
@@ -96,6 +97,9 @@ public class MainActivity extends AppCompatActivity {
         temperatureLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
         sensorQuery = findViewById(R.id.getSensorReading);
         sensorQueryOutput = findViewById(R.id.instantSensorReading);
+        sensorQueryTimestamp = findViewById(R.id.sensorReadingTimestamp);
+        sensorQueryOutput.setText("N/A");
+        sensorQueryTimestamp.setText("N/A");
 
         /* initialize recycler view used for debugging */
         LinearLayoutManager llm = new LinearLayoutManager(this);
@@ -114,18 +118,14 @@ public class MainActivity extends AppCompatActivity {
         temperatureViewModel.getWeatherDataEntries().observe(this, new Observer<List<Weather>>(){
             @Override
             public void onChanged(@Nullable List<Weather> weathers) {
-//                Log.d(TAG, "onChanged: Data observed from WeatherRepository, added to " +
-//                        "RecyclerView, graph to be redrawn.");
-                weatherAdapter.setWeatherRecyclerEntries(weathers);
-                /* use notifyItemInserted, notifyItemRemoved */
+                weatherAdapter.setWeatherRecyclerEntries(weathers);/* use notifyItemInserted, etc */
 
                 /* create fixed chart: 0 to 48 hours (yesterday and today), +40, -20 degrees C */
                 XAxis xAxis = temperatureLineChart.getXAxis();
-//                xAxis.setLabelCount(8);
                 xAxis.setAxisMaximum(48);
                 xAxis.setAxisMinimum(0);
                 xAxis.setGranularityEnabled(true);
-                xAxis.setGranularity(48/4);
+                xAxis.setGranularity(48/4); /* or xAxis.setLabelCount(8) instead*/
 
                 YAxis yAxisLeft = temperatureLineChart.getAxisLeft();
                 yAxisLeft.setAxisMaximum(40);
@@ -209,43 +209,24 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        /* for obtaining instantaneous sensor reading upon user prompt */
+        temperatureViewModel.getInstantSensorReading().observe(this,
+                new Observer<String>(){
+                    @Override
+                    public void onChanged(@Nullable String s) {
+                        String valueSubstring = s.substring(1,5);
+                        String timestampSubstring = s.substring(10, 18);
+                        sensorQueryOutput.setText(valueSubstring);
+                        sensorQueryTimestamp.setText(timestampSubstring);
+                    }
+                });
         sensorQuery.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "onClick: fetch latest sensor reading at user prompt.");
                 temperatureViewModel.updateSensorReadingOnPrompt();
-
-                // get the value from the execution model; time of sensor reading, and value
-
-                // bind it to the sensor reading display
-//                sensorQueryOutput.setText();
             }
         });
 
-        Log.d(TAG, "onCreate: started.");
-
-        /* DUMMY ACTION: for data update progress bar tied to RecyclerView */
-//        temperatureViewModel.getIsUpdating().observe(this, new Observer<Boolean>() {
-//            @Override
-//            public void onChanged(Boolean aBoolean) {
-//                if (aBoolean) {
-//                    showProgressBar();
-//                } else {
-//                    hideProgressBar();
-//                    recyclerView.smoothScrollToPosition(0);/* first element in list, last inserted */
-//                }
-//            }
-//        });
-        /* user interaction via fab click goes here */
-//        dummyFab = findViewById(R.id.floatingActionButton);
-//        dummyFab.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                showProgressBar();
-//                /* calls to other code go here */
-//            }
-//        });
-//        hideProgressBar();
     }
 
     /* graphing utilities */
@@ -277,7 +258,7 @@ public class MainActivity extends AppCompatActivity {
             float temperature = Float.parseFloat(weatherEntryInIter.getCelsius());
             Entry dataPoint = new Entry(hour, temperature);
 
-            /* need to recalculate whenever we draw, the reference timestamp should be start of today */
+            /* recalculate whenever drawn, the reference timestamp should be start of today */
 //            convertedDataMillis = dataPointMillis - dailyTimeOrigin;
 
             Integer category = weatherEntryInIter.getCategory();

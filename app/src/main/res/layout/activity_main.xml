@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/light_reddish"
+    android:background="@color/cream_orange"
     tools:context=".MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -31,6 +31,7 @@
             android:layout_marginEnd="20dp"
             android:layout_marginBottom="5dp"
             android:text="@string/homeLocation"
+            android:textColor="@color/white"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/textInputLayout"
@@ -60,6 +61,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:inputType="none"
+                android:textColor="#000000"
                 tools:text="Placeholder" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -102,6 +104,7 @@
             android:text="@string/refreshData"
             android:textColor="@color/white"
             android:textSize="12sp"
+            android:background="@color/dark_orange"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/idTemperatureLineChart1" />
@@ -113,6 +116,7 @@
             android:layout_marginStart="10dp"
             android:layout_marginTop="5dp"
             android:layout_marginBottom="10dp"
+            android:background="@color/dark_orange"
             android:text="@string/getSensorReading"
             android:textColor="@color/white"
             android:textSize="12sp"
@@ -125,7 +129,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="15dp"
-            android:layout_marginBottom="20dp"
+            android:layout_marginBottom="10dp"
             android:background="@color/white"
             android:text="@string/current_sensor_reading"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -143,15 +147,48 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-<!--        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyle"
+        <TextView
+            android:id="@+id/sensorReadingHeader1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="172dp"
-            android:layout_marginTop="32dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />-->
+            android:layout_marginStart="50dp"
+            android:layout_marginBottom="11dp"
+            android:text="@string/sensorReadingHeader1"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toTopOf="@+id/sensorReadingTimestamp"
+            app:layout_constraintStart_toEndOf="@+id/instantSensorReading" />
+
+        <TextView
+            android:id="@+id/sensorReadingHeader2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="15dp"
+            android:layout_marginBottom="10dp"
+            android:text="@string/sensorReadingHeader2"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toTopOf="@+id/instantSensorReading"
+            app:layout_constraintStart_toEndOf="@+id/getSensorReading" />
+
+        <TextView
+            android:id="@+id/sensorReadingTimestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="50dp"
+            android:layout_marginBottom="10dp"
+            android:background="@color/white"
+            android:text="@string/sensorReadingTimestamp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/instantSensorReading" />
+
+        <!--        <ProgressBar
+                    android:id="@+id/progressBar"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="172dp"
+                    android:layout_marginTop="32dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />-->
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

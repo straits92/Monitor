@@ -22,19 +22,21 @@ public class ParseUtils {
         List<Weather> weatherArrayList = new ArrayList<Weather>();
         if (weatherSearchResults != null) {
             try {
-                /* Hour-based request: response is an entire array (for days, response is JSONObj)*/
+                /* Hourly request: response is an entire array (for days, response is JSONObj)*/
                 JSONArray results = new JSONArray(weatherSearchResults);
 
                 /* extract weather data for each hour, construct data point, add to array */
                 for (int i = 0; i < results.length(); i++) {
-                    Weather weather = new Weather(null, null, null, null, null, null, 0);
+                    Weather weather = new Weather(null, null, null, null,
+                            null, null, 0);
 
-                    /* set the data obtained from the network response; not resultant analytical data */
+                    /* set data obtained from network response; not resultant analytical data */
                     JSONObject singleEntry = results.getJSONObject(i);
 
                     /* check if JSON contains error msg as defined by Accuweather API */
                     if (singleEntry.has("Message") && singleEntry.has("Code")) {
-                        Log.i(TAG, "parseWeatherJSON: ERROR RESPONSE: "+singleEntry.get("Message"));
+                        Log.i(TAG, "parseWeatherJSON: ERROR RESPONSE: "
+                                +singleEntry.get("Message"));
                         return null;
                     }
 
@@ -53,10 +55,6 @@ public class ParseUtils {
                     weatherArrayList.add(weather);
                 }
 
-                /* development info only: code prints log info, do for sensor  */
-/*
-                Iterator iter = weatherArrayList.iterator(); while (iter.hasNext()) {Weather weatherEntryInIter = (Weather) iter.next(); Log.i(TAG, "onPostExecute: time: "+weatherEntryInIter.getTime() + " " + "Temperature: "+weatherEntryInIter.getCelsius() + " " + "Link: "+weatherEntryInIter.getLink()); }
-*/
                 return weatherArrayList;
 
             } catch (JSONException e) {
@@ -74,8 +72,8 @@ public class ParseUtils {
         String localizedName;
         String latitude;
         String longitude;
-        MonitorLocation monitorLocation = new MonitorLocation(null, null, null,
-                null, false, 0);
+        MonitorLocation monitorLocation = new MonitorLocation(null, null,
+                null,null, false, 0);
 
         if (locationSearchResults != null) {
             try {
@@ -85,7 +83,8 @@ public class ParseUtils {
 
                 /* check if JSON contains error msg */
                 if (geopositionObj.has("Message") && geopositionObj.has("Code")) {
-                    Log.i(TAG, "parseLocationJSON: ERROR RESPONSE: "+geopositionObj.get("Message"));
+                    Log.i(TAG, "parseLocationJSON: ERROR RESPONSE: "
+                            +geopositionObj.get("Message"));
                     return null;
                 }
 
@@ -94,7 +93,7 @@ public class ParseUtils {
                 locationString = result.getString("Key");
                 localizedName = result.getString("LocalizedName");
 
-                /* set the data obtained from the network response; not resultant analytical data */
+                /* set data obtained from the network response; not resultant analytical data */
                 monitorLocation.setLocation(locationString);
                 monitorLocation.setLocalizedName(localizedName);
                 monitorLocation.setLatitude(latitude);

@@ -13,8 +13,7 @@ import com.example.monitor.models.Weather;
 import java.util.List;
 
 /* interface provides methods which are annotated; @Dao library implements this
-* interface; it generates method bodies.
-* Often one DAO is made per entity, this is for Weather */
+* interface; it generates method bodies. */
 @Dao
 public interface WeatherDao {
 
@@ -35,12 +34,6 @@ public interface WeatherDao {
 
     @Query("SELECT * FROM weather_table ORDER BY id DESC") /* descending order */
     List<Weather> getAllWeatherPointsNonLive();
-
-//    @Query("DELETE FROM hourly_weather_table")
-//    void deleteAllHourlyWeatherPoints();
-//
-//    @Query("SELECT * FROM hourly_weather_table ORDER BY id DESC") /* descending order */
-//    LiveData<List<Weather>> getAllHourlyWeatherPoints();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertWeatherList(List<Weather> weatherList);

@@ -12,7 +12,10 @@
     <string name="unitSelection">unit selection</string>
     <string name="dropDownTitle">Selected Parameter</string>
     <string name="getSensorReading">Sensor query</string>
-    <string name="current_sensor_reading">placeholder value</string>
+    <string name="current_sensor_reading">[sensor val]</string>
+    <string name="sensorReadingTimestamp">[time]</string>
+    <string name="sensorReadingHeader1">Timestamp</string>
+    <string name="sensorReadingHeader2">Temp (*C)</string>
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>

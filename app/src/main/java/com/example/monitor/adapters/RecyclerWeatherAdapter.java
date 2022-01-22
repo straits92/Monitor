@@ -59,7 +59,6 @@ public class RecyclerWeatherAdapter extends RecyclerView.Adapter<RecyclerWeather
         /* also use notifyItemInserted, notifyItemRemoved if needed */
     }
 
-
     /* the holder class */
     public class WeatherViewHolder extends RecyclerView.ViewHolder {
         TextView timeText;
