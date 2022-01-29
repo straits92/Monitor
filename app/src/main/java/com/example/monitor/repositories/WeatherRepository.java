@@ -47,7 +47,7 @@ public class WeatherRepository {
         locationDao = locationDatabase.locationDao();
         weatherDataEntries = weatherDao.getAllWeatherPoints();
         locationData = locationDao.getLocationTable();
-        instantSensorReading.setValue("[n/a]C, [NO TIMESTAMP]");
+        instantSensorReading.setValue("XXXXXXXXXXXXXXXXXXX");
 
         isUpdating.setValue(false); /* initial value for weather list */
 
@@ -81,4 +81,7 @@ public class WeatherRepository {
         return instantSensorReading;
     }
 
+    public List<Weather> getWeatherDataEntriesFromDb() {
+        return remoteModel.getWeatherDataEntriesFromDb();
+    }
 }

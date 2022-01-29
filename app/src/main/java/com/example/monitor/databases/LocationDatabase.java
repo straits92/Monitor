@@ -39,7 +39,7 @@ public abstract class LocationDatabase extends RoomDatabase {
                     .addCallback(roomCallback)/* call right after creating the instance for setup,but in which thread  */
                     .build();
 
-            Log.d(TAG, "getInstance: LocationDatabase instantiated!");
+//            Log.d(TAG, "getInstance: LocationDatabase instantiated!");
         }
         return instance;
     }

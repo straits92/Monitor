@@ -38,7 +38,7 @@ public abstract class WeatherDatabase extends RoomDatabase {
                     .addCallback(roomCallback)/* call right after creating the instance for setup  */
                     .build();
 
-            Log.d(TAG, "getInstance: WeatherDatabase instantiated!");
+//            Log.d(TAG, "getInstance: WeatherDatabase instantiated!");
         }
         return instance;
     }

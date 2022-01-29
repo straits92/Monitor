@@ -19,32 +19,27 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.monitor.adapters.RecyclerWeatherAdapter;
 import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.IAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.utils.EntryXComparator;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.textfield.TextInputLayout;
 
-import java.lang.reflect.Array;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -60,13 +55,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     /* enumerated constants for data type and recency */
-    private static final Integer TEMPERATURE_SENSOR = 2;
+    private static final Integer HOME_SENSOR = 2;
     private static final Integer SINGLE_HOUR_DATA = 1;
     private static final Integer TWELVE_HOURS_DATA = 0;
     private static final Integer UNDER_48H = 0;
 
+    private static final Integer TEMPERATURE = 0;
+    private static final Integer HUMIDITY = 1;
+
     /* declare app modules */
-    private MainActivityViewModel temperatureViewModel;
+    private MainActivityViewModel weatherViewModel;
 
     /* declare display elements here */
     private RecyclerView recyclerView;
@@ -75,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
     private Button sensorQuery;
     private TextView sensorQueryOutput;
     private TextView sensorQueryTimestamp;
-    private LineChart temperatureLineChart;
+    private LineChart weatherLineChart;
     private AutoCompleteTextView dropDownListParams;
 
     @Override
@@ -87,14 +85,14 @@ public class MainActivity extends AppCompatActivity {
         String[] monitorParameters = getResources().getStringArray(R.array.monitoring_parameters);
         ArrayAdapter dropDownListParametersAdapter = new ArrayAdapter(this,
                 R.layout.dropdown_item_monitoring_parameter, monitorParameters);
-        dropDownListParams = findViewById(R.id.autoCompleteTextView);
+        dropDownListParams = findViewById(R.id.dropDownParametersText);
         dropDownListParams.setAdapter(dropDownListParametersAdapter);
 
         /* initiate display elements */
         recyclerView = findViewById(R.id.recyclerView);
 //        progressBar = findViewById(R.id.progressBar);
         homeLocation = findViewById(R.id.homeLocation); /* should have an onClick too */
-        temperatureLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
+        weatherLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
         sensorQuery = findViewById(R.id.getSensorReading);
         sensorQueryOutput = findViewById(R.id.instantSensorReading);
         sensorQueryTimestamp = findViewById(R.id.sensorReadingTimestamp);
@@ -112,91 +110,60 @@ public class MainActivity extends AppCompatActivity {
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
 
         /* initialize ViewModel scoped to lifecycle of this activity; android will destroy it at end */
-        temperatureViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
+        weatherViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
-        /* observe() is a LiveData callback. When LiveData changes, redraw. */
-        temperatureViewModel.getWeatherDataEntries().observe(this, new Observer<List<Weather>>(){
+        /* observers */
+        /* observe() is a LiveData callback to weather data. When the data changes, redraw. */
+        weatherViewModel.getWeatherDataEntries().observe(this, new Observer<List<Weather>>(){
             @Override
             public void onChanged(@Nullable List<Weather> weathers) {
                 weatherAdapter.setWeatherRecyclerEntries(weathers);/* use notifyItemInserted, etc */
-
-                /* create fixed chart: 0 to 48 hours (yesterday and today), +40, -20 degrees C */
-                XAxis xAxis = temperatureLineChart.getXAxis();
-                xAxis.setAxisMaximum(48);
-                xAxis.setAxisMinimum(0);
-                xAxis.setGranularityEnabled(true);
-                xAxis.setGranularity(48/4); /* or xAxis.setLabelCount(8) instead*/
-
-                YAxis yAxisLeft = temperatureLineChart.getAxisLeft();
-                yAxisLeft.setAxisMaximum(40);
-                yAxisLeft.setAxisMinimum(-20);
-                yAxisLeft.setGranularityEnabled(true);
-                yAxisLeft.setGranularity(60/12);
-
-                YAxis yAxisRight = temperatureLineChart.getAxisRight();
-                yAxisRight.setAxisMaximum(40);
-                yAxisRight.setAxisMinimum(-20);
-                yAxisRight.setGranularityEnabled(true);
-                yAxisRight.setGranularity(60/12);
-
-                /* get start of today in this timezone */
-                Calendar today = Calendar.getInstance();
-                today.set(Calendar.MILLISECOND, 0);
-                today.set(Calendar.SECOND, 0);
-                today.set(Calendar.MINUTE, 0);
-                today.set(Calendar.HOUR_OF_DAY, 0);
-                long dailyTimeOrigin = today.getTimeInMillis();
-
-                List<Entry> twelveHourWeatherList = new ArrayList<>();
-                List<Entry> hourlyWeatherList = new ArrayList<>();
-                List<Entry> sensorWeatherList = new ArrayList<>();
-                /*temperatureViewModel.getSensorWeatherList()*/
-
-                separateWeatherDataTrendsFixed(dailyTimeOrigin, weathers, twelveHourWeatherList,
-                        hourlyWeatherList, sensorWeatherList);
-
-                /* sorting needed to avoid NegativeArraySizeException with MPAndroidChart library */
-                Collections.sort(twelveHourWeatherList, new EntryXComparator());
-                Collections.sort(hourlyWeatherList, new EntryXComparator());
-                Collections.sort(sensorWeatherList, new EntryXComparator());
-
-                /* bind the data to the temperatureLineChart */
-                ArrayList<ILineDataSet> lineDataSets = new ArrayList<>();
-                LineDataSet twelveHourTemperatureSet = new LineDataSet(twelveHourWeatherList,
-                        "Forecast(12hr)");
-                LineDataSet hourlyTemperatureSet = new LineDataSet(hourlyWeatherList,
-                        "Current(1hr)");
-                LineDataSet sensorTemperatureSet = new LineDataSet(sensorWeatherList,
-                        "Sensor temperature");
-
-                twelveHourTemperatureSet.setDrawCircles(true);twelveHourTemperatureSet.setColor(Color.BLACK);
-                hourlyTemperatureSet.setDrawCircles(true); hourlyTemperatureSet.setColor(Color.YELLOW);
-                sensorTemperatureSet.setDrawCircles(true); sensorTemperatureSet.setColor(Color.GREEN);
-
-                lineDataSets.add(twelveHourTemperatureSet);
-                lineDataSets.add(hourlyTemperatureSet);
-                lineDataSets.add(sensorTemperatureSet);
-
-                temperatureLineChart.setData(new LineData(lineDataSets));
-
-//                /* set the value formatter to display the X axis as desired */
-//                ValueFormatter xAxisFormatter = new HourAxisValueFormatter(dailyTimeOrigin);
-//                XAxis xAxis = temperatureLineChart.getXAxis();
-//                xAxis.setValueFormatter(xAxisFormatter);
+                redrawGraph(weathers);
             }
         });
 
-        /* update home location button/display; not recyclerview */
-        temperatureViewModel.getLocationData().observe(this,
+        /* update home location button/display; potentially, a location change should also prompt
+        * an immediate request for a 12hr forecast.
+        * (not implemented) */
+        weatherViewModel.getLocationData().observe(this,
                 new Observer<List<MonitorLocation>>(){
             @Override
             public void onChanged(@Nullable List<MonitorLocation> monitorLocations) {
-                List<MonitorLocation> tempList = temperatureViewModel.getLocationData().getValue();
+                List<MonitorLocation> tempList = weatherViewModel.getLocationData().getValue();
                 String localizedHomeName = tempList.get(0).getLocalizedName();
                 Log.d(TAG, "Data observed from LocationDatabase. Location: "
                         +localizedHomeName+"; location list size: "+tempList.size());
                 homeLocation.setText(localizedHomeName);
                 /* use notifyItemInserted, notifyItemRemoved, notifyDataSetChanged adapter methods */
+
+                /* request the execution model to fetch relevant data from the database */
+                List<Weather> weathers = weatherViewModel.getWeatherDataEntriesFromDb();
+                if (weathers == null) {
+                    Log.i(TAG, "onItemClick: requested parameter not in database.");
+                    return;
+                }
+                redrawGraph(weathers);
+            }
+        });
+
+        /* for obtaining instantaneous sensor reading upon user prompt */
+        weatherViewModel.getInstantSensorReading().observe(this,
+            new Observer<String>(){
+                @Override
+                public void onChanged(@Nullable String s) {
+                    String valueSubstring = s.substring(1,5);
+                    String timestampSubstring = s.substring(10, 18);
+                    sensorQueryOutput.setText(valueSubstring);
+                    sensorQueryTimestamp.setText(timestampSubstring);
+                }
+        });
+
+        /* onClick listeners */
+        /* sets up instantaneous sensor reading */
+        sensorQuery.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                weatherViewModel.updateSensorReadingOnPrompt();
             }
         });
 
@@ -205,35 +172,106 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "onClick: fetch current location at user prompt.");
-                temperatureViewModel.updateLocationOnPrompt();
+                weatherViewModel.updateLocationOnPrompt();
             }
         });
 
-        /* for obtaining instantaneous sensor reading upon user prompt */
-        temperatureViewModel.getInstantSensorReading().observe(this,
-                new Observer<String>(){
-                    @Override
-                    public void onChanged(@Nullable String s) {
-                        String valueSubstring = s.substring(1,5);
-                        String timestampSubstring = s.substring(10, 18);
-                        sensorQueryOutput.setText(valueSubstring);
-                        sensorQueryTimestamp.setText(timestampSubstring);
-                    }
-                });
-        sensorQuery.setOnClickListener(new View.OnClickListener(){
+        /* sets up the listener for changes to the drop down selection */
+        dropDownListParams.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onClick(View v) {
-                temperatureViewModel.updateSensorReadingOnPrompt();
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                /* request the execution model to fetch relevant data from the database */
+                List<Weather> weathers = weatherViewModel.getWeatherDataEntriesFromDb();
+                if (weathers == null) {
+                    Log.i(TAG, "onItemClick: requested parameter not in database.");
+                    return;
+                }
+                redrawGraph(weathers);
             }
         });
 
     }
 
     /* graphing utilities */
+    private void redrawGraph(List<Weather> weathers) {
+        String selectedParameter = dropDownListParams.getText().toString();
+        Integer selectedParam = 0;
+        long dailyTimeOrigin = getStartOfTodayMillis();
+        Log.d(TAG, "onClick: user selected the following option in drop-down menu: "
+                + selectedParameter);
+
+        if (selectedParameter.equals("Temperature")) {
+            selectedParam = TEMPERATURE;
+        } else if (selectedParameter.equals("Humidity")) {
+            selectedParam = HUMIDITY;
+        } else {
+            Log.i(TAG, "OnClickListener: no valid data selected from drop-down list");
+        }
+
+        /* draw the obtained data on the display */
+        bindDataToGraph(dailyTimeOrigin, weathers, selectedParam);
+
+        return;
+    }
+
+    private void bindDataToGraph(long dailyTimeOrigin, List<Weather> weathers, Integer selectedParam) {
+        /* create fixed chart: x-axis is 0 to 48 hours (yesterday and today) */
+        if (selectedParam == TEMPERATURE) {
+            /* y axis is +40, -20 degrees C */
+            drawChartAxes(-20, 40, 12, 12);
+            weatherLineChart.getDescription()
+                    .setText("Temperature in Celsius (yesterday, today)");           
+        } else if (selectedParam == HUMIDITY) {
+            /* y axis is 0 to 100% humidity */
+            drawChartAxes(0, 100, 12, 12);
+            weatherLineChart.getDescription()
+                    .setText("Humidity in % (yesterday, today)");
+        } else {
+            Log.i(TAG, "bindDataToGraph: no recognized data provided, return without drawing.");
+            return;
+        }
+
+        /* set up data to be drawn on the graph */
+        List<Entry> twelveHourWeatherList = new ArrayList<>();
+        List<Entry> hourlyWeatherList = new ArrayList<>();
+        List<Entry> sensorWeatherList = new ArrayList<>();
+        /*temperatureViewModel.getSensorWeatherList()*/
+
+        separateWeatherDataTrendsFixed(dailyTimeOrigin, weathers, twelveHourWeatherList,
+                hourlyWeatherList, sensorWeatherList, selectedParam);
+
+        /* sorting needed to avoid NegativeArraySizeException with MPAndroidChart library */
+        Collections.sort(twelveHourWeatherList, new EntryXComparator());
+        Collections.sort(hourlyWeatherList, new EntryXComparator());
+        Collections.sort(sensorWeatherList, new EntryXComparator());
+
+        /* bind the data to the temperatureLineChart */
+        ArrayList<ILineDataSet> lineDataSets = new ArrayList<>();
+        LineDataSet twelveHourTemperatureSet = new LineDataSet(twelveHourWeatherList,
+                "API (12hr)");
+        LineDataSet hourlyTemperatureSet = new LineDataSet(hourlyWeatherList,
+                "API (1hr)");
+        LineDataSet sensorTemperatureSet = new LineDataSet(sensorWeatherList,
+                "Sensor (1hr)");
+
+        twelveHourTemperatureSet.setDrawCircles(true);twelveHourTemperatureSet.setColor(Color.RED);
+        hourlyTemperatureSet.setDrawCircles(true); hourlyTemperatureSet.setColor(Color.GREEN);
+        sensorTemperatureSet.setDrawCircles(true); sensorTemperatureSet.setColor(Color.BLUE);
+
+        lineDataSets.add(twelveHourTemperatureSet);
+        lineDataSets.add(hourlyTemperatureSet);
+        lineDataSets.add(sensorTemperatureSet);
+
+        weatherLineChart.setData(new LineData(lineDataSets));
+
+        return;
+    }
+
     private void separateWeatherDataTrendsFixed(long dailyTimeOrigin, List<Weather> weathers,
                                                 List<Entry> twelveHourWeatherList,
                                                 List<Entry> hourlyWeatherList,
-                                                List<Entry> sensorWeatherList) {
+                                                List<Entry> sensorWeatherList,
+                                                Integer selectedParam) {
         long startOfYesterday = dailyTimeOrigin - 86400000; // a day in millis is 60*60*24*1000
         String currentSelectedLocation = (String) homeLocation.getText();
 //        Log.d(TAG, "separateWeatherDataTrendsFixed: entries to be generated for each data " +
@@ -255,8 +293,16 @@ public class MainActivity extends AppCompatActivity {
             /* get hours offset from start of yesterday, get temperature */
             long dataPointTime = weatherEntryInIter.getTimeInMillis();
             long hour = (dataPointTime - startOfYesterday)/3600000; // 0 to 48
-            float temperature = Float.parseFloat(weatherEntryInIter.getCelsius());
-            Entry dataPoint = new Entry(hour, temperature);
+
+            float parameter;
+            if (selectedParam == TEMPERATURE) {
+                parameter = Float.parseFloat(weatherEntryInIter.getCelsius());
+            } else if (selectedParam == HUMIDITY) {
+                parameter = Float.parseFloat(weatherEntryInIter.getHumidity());
+            } else {
+                parameter = 0.01f;
+            }
+            Entry dataPoint = new Entry(hour, parameter);
 
             /* recalculate whenever drawn, the reference timestamp should be start of today */
 //            convertedDataMillis = dataPointMillis - dailyTimeOrigin;
@@ -266,13 +312,44 @@ public class MainActivity extends AppCompatActivity {
                 hourlyWeatherList.add(dataPoint);
             } else if (category == TWELVE_HOURS_DATA) {
                 twelveHourWeatherList.add(dataPoint);
-            } else if (category == TEMPERATURE_SENSOR) {
+            } else if (category == HOME_SENSOR) {
                 sensorWeatherList.add(dataPoint);
             } else {
                 continue;
             }
         }
 
+    }
+
+    private long getStartOfTodayMillis() {
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.MILLISECOND, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        long dailyTimeOrigin = today.getTimeInMillis();
+        return dailyTimeOrigin;
+    }
+
+    private void drawChartAxes(Integer yAxisMin, Integer yAxisMax, Integer yLabelCount, Integer xLabelCount) {
+        XAxis xAxis = weatherLineChart.getXAxis();
+        xAxis.setAxisMaximum(48);
+        xAxis.setAxisMinimum(0);
+//        xAxis.setGranularityEnabled(true);
+//        xAxis.setGranularity(48/4); /* or xAxis.setLabelCount(n) instead*/
+        xAxis.setLabelCount(xLabelCount);
+
+        YAxis yAxisLeft = weatherLineChart.getAxisLeft();
+        yAxisLeft.setAxisMaximum(yAxisMax);
+        yAxisLeft.setAxisMinimum(yAxisMin);
+        yAxisLeft.setLabelCount(yLabelCount);
+
+        YAxis yAxisRight = weatherLineChart.getAxisRight();
+        yAxisRight.setAxisMaximum(yAxisMax);
+        yAxisRight.setAxisMinimum(yAxisMin);
+        yAxisRight.setLabelCount(yLabelCount);
+
+        return;
     }
 
     /* helpers for the progress bar */
@@ -328,11 +405,6 @@ public class MainActivity extends AppCompatActivity {
             return getHour(originalTimestamp);
         }
 
-//        @Override not present in superclass
-//        public int getDecimalDigits() {
-//            return 0;
-//        }
-
         private String getHour(long timestamp){
             try{
                 mDate.setTime(timestamp/* *1000, arguments already in millis */);
@@ -342,6 +414,15 @@ public class MainActivity extends AppCompatActivity {
                 return "xx";
             }
         }
+//        @Override not present in superclass
+//        public int getDecimalDigits() {
+//            return 0;
+//        }
+
+//        /* set the value formatter to display the X axis, in a data observer */
+//        ValueFormatter xAxisFormatter = new HourAxisValueFormatter(dailyTimeOrigin);
+//        XAxis xAxis = temperatureLineChart.getXAxis();
+//        xAxis.setValueFormatter(xAxisFormatter);
     }
 
 }

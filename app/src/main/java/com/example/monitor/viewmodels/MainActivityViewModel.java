@@ -62,4 +62,7 @@ public class MainActivityViewModel extends AndroidViewModel {
 
     public LiveData<String> getInstantSensorReading() { return instantSensorReading; }
 
+    public List<Weather> getWeatherDataEntriesFromDb() {
+        return weatherRepository.getWeatherDataEntriesFromDb();
+    }
 }

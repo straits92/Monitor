@@ -10,7 +10,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /* JSON key strings specifically for accuweather JSON objects, or local sensors */
@@ -28,7 +27,7 @@ public class ParseUtils {
                 /* extract weather data for each hour, construct data point, add to array */
                 for (int i = 0; i < results.length(); i++) {
                     Weather weather = new Weather(null, null, null, null,
-                            null, null, 0);
+                            null,null, null, 0);
 
                     /* set data obtained from network response; not resultant analytical data */
                     JSONObject singleEntry = results.getJSONObject(i);
@@ -50,13 +49,13 @@ public class ParseUtils {
                     String tempVal = temperatureObj.getString("Value");
                     weather.setCelsius(tempVal);
 
-                    /* further weather info can be extracted from object */
+                    String humidityVal = singleEntry.getString("RelativeHumidity");
+                    weather.setHumidity(humidityVal);
+                    /* further weather info can be extracted from object, like indoor relhumidity */
 
                     weatherArrayList.add(weather);
                 }
-
                 return weatherArrayList;
-
             } catch (JSONException e) {
                 e.printStackTrace();
             }

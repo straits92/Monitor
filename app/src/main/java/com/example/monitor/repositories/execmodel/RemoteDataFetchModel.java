@@ -37,12 +37,11 @@ import java.util.concurrent.TimeoutException;
 * fetching "location code" and weather data from Accuweather API
 * formatting and storing data in location and weather database
 * maintaining data stored in the weather database
-*
 * */
-
 public class RemoteDataFetchModel {
     private static final String TAG = "RemoteDataFetchModel";
 
+    /* enumerated constants */
     private static final Integer TEMPERATURE_SENSOR_INSTANT = 3;
     private static final Integer TEMPERATURE_SENSOR = 2;
     private static final Integer SINGLE_HOUR_DATA = 1;
@@ -120,13 +119,14 @@ public class RemoteDataFetchModel {
                         + defaultHomeLocation.getLocalizedName());
             }
 
-            /* setup based on intervals for data aging + visibility, and deletion policy */
-            setUpPeriodicWeatherQueries(howLongVisible, howLongStored); /* intervals in seconds */
+            /* setup tasks at intervals (in secs) for data aging, visibility, and deletion policy */
+            setUpPeriodicWeatherQueries(howLongVisible, howLongStored);
         }
         return instance;
     }
 
     /* public method for user-prompted update of instant sensor reading */
+    /* (not implemented) offer an option to get instant sensor reading of humidity */
     public static synchronized void updateSensorReadingOnPrompt() {
         serviceExecutor.submit(new Runnable() {
             @Override
@@ -141,67 +141,13 @@ public class RemoteDataFetchModel {
                     /* modify LiveData visible in MainActivity */
                     instantSensorReading.postValue("["+sensorWeatherList.get(0).getCelsius()
                             +"]C, ["+hms+"]");
+//                    sensorWeatherList.get(0).getHumidity();
                 } else {
                     Log.i(TAG, "updateSensorReadingOnPrompt: sensor data returns null");
-                    instantSensorReading.postValue("[XXXX]C, [XXXXXXXX]");
+                    instantSensorReading.postValue("XXXXXXXXXXXXXXXXXXX");
                 }
             }
         });
-    }
-
-    /* checks if forecast of a type, for the time period, in a location, are in the db */
-    private static boolean dataNeedsFetching(Integer dataCategory, MonitorLocation location) {
-        Log.d(TAG, "dataNeedsFetching: check if dataCategory: "
-                +dataCategory+"; needs fetching. 1: hourly, 0: twelve hours.");
-        List<Weather> weatherList = null;
-
-        /* get start of current hour */
-        Calendar today = Calendar.getInstance(); // .getInstance(TimeZone.getTimeZone("Belgrade"));
-        today.set(Calendar.MILLISECOND, 0);
-        today.set(Calendar.SECOND, 0);
-        today.set(Calendar.MINUTE, 0);
-        long startOfHour = today.getTimeInMillis(); // add 1hr for +01:00 ?
-        long startOfHourNext = startOfHour + 3600000;
-        Log.d(TAG, "dataNeedsFetching: current hour millis: "+startOfHour);
-
-        Future<List<Weather>> checkDataTask = getForecastFromDbNonBlocking();
-        try {
-            weatherList = checkDataTask.get();
-        } catch (Exception e){
-            e.printStackTrace();
-            return true;
-        }
-
-        String locationName = location.getLocalizedName();
-        Iterator iter = weatherList.iterator();
-        while (iter.hasNext()) {
-            Weather weatherEntryInIter = (Weather) iter.next();
-
-            /* for API forecasts, the next hour is checked */
-            if (dataCategory == SINGLE_HOUR_DATA || dataCategory == TWELVE_HOURS_DATA) {
-                if ((weatherEntryInIter.getCategory() == dataCategory)
-                        && (weatherEntryInIter.getTimeInMillis() == startOfHourNext)
-                        && (weatherEntryInIter.getLocation().equals(locationName))) {
-                    Log.d(TAG, "dataNeedsFetching for this hour: NO, weather data type(API forecast):"
-                            + dataCategory + "location:|" + locationName + "| is already present in db");
-                    return false;
-                }
-
-            /* for the sensor, the current hour is checked */
-            } else if (dataCategory == TEMPERATURE_SENSOR) {
-                if ((weatherEntryInIter.getCategory() == dataCategory)
-                        && (weatherEntryInIter.getTimeInMillis() == startOfHour)
-                        && (weatherEntryInIter.getLocation().equals(locationName))) {
-                    Log.d(TAG, "dataNeedsFetching for this hour: NO, weather data type (sensor):"
-                            + dataCategory + "location:|" + locationName + "| is present in db");
-                    return false;
-                }
-            } else {} /* other potential options */
-
-        }
-        Log.d(TAG, "dataNeedsFetching for this hour: YES, weather data type:"
-                +dataCategory+"location:"+locationName+ " not present in db");
-        return true;
     }
 
     /* public method for user-prompted location update */
@@ -226,7 +172,8 @@ public class RemoteDataFetchModel {
     /* GPS latitude and longitude task */
     public static synchronized ArrayList<String> getGpsLatLon() {
         ArrayList<String> gpsLatLon = null;
-        Future<ArrayList<String>> gpsLatLonTask = gpsExecutor.submit(new GetGpsTask(applicationFromRepository));
+        Future<ArrayList<String>> gpsLatLonTask = gpsExecutor
+                .submit(new GetGpsTask(applicationFromRepository));
         try {
             gpsLatLon = gpsLatLonTask.get(3500, TimeUnit.MILLISECONDS);
         } catch (TimeoutException t) {
@@ -301,86 +248,6 @@ public class RemoteDataFetchModel {
         return weatherList;
     }
 
-
-    /* prepares data about to be inserted into database */
-    private static void setAnalyticsToWeatherData(List<Weather> weatherList, String localizedName,
-                                                  Integer persistence, Integer category) {
-        Iterator iter = weatherList.iterator();
-        while (iter.hasNext()) {
-            Weather weatherEntryInIter = (Weather) iter.next();
-            if (localizedName != null) {
-                weatherEntryInIter.setLocation(localizedName);
-            }
-            if (persistence != null) {
-                weatherEntryInIter.setPersistence(persistence);
-            }
-            if (category != null) {
-                weatherEntryInIter.setCategory(category);
-            }
-
-            long weatherTimeInMillis = getWeatherDataPointTime(weatherEntryInIter.getTime());
-            if (weatherTimeInMillis == 0) {
-                Log.d(TAG, "setAnalyticsToWeatherData: ERROR: " +
-                        "MILLIS DEFAULT TO 0, API FORMAT NOT READ.");
-            }
-            weatherEntryInIter.setTimeInMillis(weatherTimeInMillis);
-        }
-    }
-
-    /* database maintenance to be called in a runnable object as a background task */
-    private static void maintainWeatherDatabase(Integer howLongVisible, Integer howLongStored) {
-        /* (blocking) query the weather db for entire list by submitting to caching thread */
-        List<Weather> weatherList = null;
-        Future<List<Weather>> getWeatherListFromDbTaskMethod = getForecastFromDbNonBlocking();
-        try {
-            weatherList = getWeatherListFromDbTaskMethod.get();
-        } catch (Exception e) {
-            Log.d(TAG, "maintainWeatherDatabase: exception; weather data not fetched. ");
-            e.printStackTrace();
-        }
-        if (weatherList == null) {
-            Log.d(TAG, "maintainWeatherDatabase: data not fetched; no maintenance done. ");
-            return;
-        }
-
-        /* examine each data point's DateTime, formulate Date object, compare to current, modify age
-        * category, and mark old data for deletion if older than howLongStored */
-        boolean printWeatherInfo = false;
-        List<Weather> modifiedWeatherList = new ArrayList<>();
-        Integer ageCategory = UNDER_48H;
-        long weatherTimeInMillis;
-        Date currentDate = new Date(System.currentTimeMillis());
-        long currentDateMillis = currentDate.getTime();
-
-        Iterator iter = weatherList.iterator();
-        while (iter.hasNext()) {
-            Weather weatherEntryInIter = (Weather) iter.next();
-            Integer elementIndex = weatherList.indexOf(weatherEntryInIter);
-
-            if (printWeatherInfo) {
-                Log.i(TAG, "\nElement index: " + elementIndex
-//                    + "\nType: (0 is 12hr, 1 is 1hr type): " + weatherEntryInIter.getCategory()
-                        + "\nDateTime: " + weatherEntryInIter.getTime()
-//                    + "\nID: " + weatherEntryInIter.getId()
-                        + "\nPersistence: " + weatherEntryInIter.getPersistence());
-            }
-
-            /* set the persistence and the time in millis for this point */
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                weatherTimeInMillis = weatherEntryInIter.getTimeInMillis();
-                ageCategory = updateDataAge(weatherTimeInMillis, currentDateMillis, howLongVisible,
-                        howLongStored);
-            }
-            weatherEntryInIter.setPersistence(ageCategory);
-            modifiedWeatherList.add(elementIndex, weatherEntryInIter);
-        }
-        Log.i(TAG, "maintainWeatherDatabase: maintenance should be done; cache it.");
-
-        /* store the weather list back into the database by iteratively updating each data point */
-        cachingExecutor.submit(new CacheDataInDbsTask(modifiedWeatherList, weatherDaoReference,
-                false, true));
-    }
-
     @RequiresApi(api = Build.VERSION_CODES.N)
     private static Integer updateDataAge(long weatherTimeInMillis, long currentDateMillis,
                                          Integer howLongVisible, Integer howLongStored) {
@@ -414,7 +281,10 @@ public class RemoteDataFetchModel {
             return BETWEEN_48H_AND_WEEK;
         }
 
-        Log.d(TAG, "updateDataAge: this point is in the last 48h; remain visible.");
+        if (printTimeData) {
+            Log.d(TAG, "updateDataAge: this point is in the last 48h; remain visible.");
+        }
+
         return UNDER_48H;
     }
 
@@ -437,48 +307,13 @@ public class RemoteDataFetchModel {
         return d.getTime();
     }
 
-    public static void clearOldWeatherData() {
-
-        /* (blocking) query the weather db for entire list, via caching executor */
-        List<Weather> weatherList = null;
-        Future<List<Weather>> getWeatherListFromDbTaskMethod = getForecastFromDbNonBlocking();
-        try {
-            weatherList = getWeatherListFromDbTaskMethod.get();
-        } catch (Exception e) {
-            Log.d(TAG, "clearOldWeatherData: exception; weather data not fetched. ");
-            e.printStackTrace();
-        }
-        if (weatherList == null) {
-            Log.d(TAG, "clearOldWeatherData: data not fetched; no deletion to be done. ");
-            return;
-        }
-
-        boolean printWeatherInfo = false;
-        Iterator iter = weatherList.iterator();
-        while (iter.hasNext()) {
-            Weather weatherEntryInIter = (Weather) iter.next();
-            Integer elementIndex = weatherList.indexOf(weatherEntryInIter);
-            if (printWeatherInfo) {
-                Log.i(TAG, "\nElement index: " + elementIndex
-//                    + "\nPoint type: (0 is 12hr, 1 is 1hr): " + weatherEntryInIter.getCategory()
-                        + "\nDateTime: " + weatherEntryInIter.getTime()
-//                    + "\nID: " + weatherEntryInIter.getId()
-                        + "\nPersistence: " + weatherEntryInIter.getPersistence());
-            }
-
-            if (weatherEntryInIter.getPersistence() == MORE_THAN_A_WEEK) {
-                weatherDaoReference.delete(weatherEntryInIter);
-            }
-        }
-    }
-
     /* scheduled tasks in the background */
     public static synchronized void setUpPeriodicWeatherQueries(Integer howLongVisible,
                                                                 Integer howLongStored) {
         Log.i(TAG, "setUpPeriodicWeatherQueries: to be set up.");
         /* define initial delay of each task; they should not compete for the same thread. */
-        Integer initialDelayHourly = 30;
-        Integer initialDelayTwelveHour = 40;
+        Integer initialDelayHourly = 10;
+        Integer initialDelayTwelveHour = 20;
         Integer initialDelayMaintenance = 5;
 
         /* set up the hourly weather query; should cancel if no response */
@@ -487,7 +322,6 @@ public class RemoteDataFetchModel {
             public void run() {
                 Log.d(TAG, "run: scheduled Runnable executing hourly weather query. ");
                 MonitorLocation fetchedLocation = defaultHomeLocation;
-                List<Weather> hourlyWeatherList;
 
                 /* (blocking) query the location db for relevant location */
                 Future<MonitorLocation> getLocationFromDbTaskMethod = getLocationFromDbNonBlocking();
@@ -501,14 +335,16 @@ public class RemoteDataFetchModel {
 
                 /* candidate for general wrapper method; similar code used in other runnables */
                 if (dataNeedsFetching(SINGLE_HOUR_DATA, fetchedLocation)) {
-                    hourlyWeatherList = getForecastFromNetwork(SINGLE_HOUR_DATA,
-                            fetchedLocation, "successfully fetched single hour forecast.");
+                    List<Weather> hourlyWeatherList = getForecastFromNetwork(SINGLE_HOUR_DATA,
+                            fetchedLocation, "successfully fetched single hr forecast.");
 
                     if (hourlyWeatherList != null) {
                         setAnalyticsToWeatherData(hourlyWeatherList, fetchedLocation.getLocalizedName(),
                                 UNDER_48H, SINGLE_HOUR_DATA);
                         cachingExecutor.submit(new CacheDataInDbsTask(hourlyWeatherList.get(0),
                                 weatherDaoReference,false));
+                    } else {
+                        Log.i(TAG, "scheduled task: temperature sensor data returns as null");
                     }
                 }
 
@@ -525,7 +361,7 @@ public class RemoteDataFetchModel {
                         cachingExecutor.submit(new CacheDataInDbsTask(sensorWeatherList.get(0),
                                 weatherDaoReference,false));
                     } else {
-                        Log.i(TAG, "getInstance: temperature sensor data returns as null");
+                        Log.i(TAG, "scheduled task: temperature sensor data returns as null");
                     }
                 }
 
@@ -621,4 +457,190 @@ public class RemoteDataFetchModel {
         return getWeatherListFromDbTask;
     }
 
+    /* data maintenance methods */
+    /* database maintenance to be called in a runnable object as a background task */
+    private static void maintainWeatherDatabase(Integer howLongVisible, Integer howLongStored) {
+        /* (blocking) query the weather db for entire list by submitting to caching thread */
+        List<Weather> weatherList = null;
+        Future<List<Weather>> getWeatherListFromDbTaskMethod = getForecastFromDbNonBlocking();
+        try {
+            weatherList = getWeatherListFromDbTaskMethod.get();
+        } catch (Exception e) {
+            Log.d(TAG, "maintainWeatherDatabase: exception; weather data not fetched. ");
+            e.printStackTrace();
+        }
+        if (weatherList == null) {
+            Log.d(TAG, "maintainWeatherDatabase: data not fetched; no maintenance done. ");
+            return;
+        }
+
+        /* examine each data point's DateTime, formulate Date object, compare to current, modify age
+         * category, and mark old data for deletion if older than howLongStored */
+        boolean printWeatherInfo = false;
+        List<Weather> modifiedWeatherList = new ArrayList<>();
+        Integer ageCategory = UNDER_48H;
+        long weatherTimeInMillis;
+        Date currentDate = new Date(System.currentTimeMillis());
+        long currentDateMillis = currentDate.getTime();
+
+        Iterator iter = weatherList.iterator();
+        while (iter.hasNext()) {
+            Weather weatherEntryInIter = (Weather) iter.next();
+            Integer elementIndex = weatherList.indexOf(weatherEntryInIter);
+
+            if (printWeatherInfo) {
+                Log.i(TAG, "\nElement index: " + elementIndex
+//                    + "\nType: (0 is 12hr, 1 is 1hr type): " + weatherEntryInIter.getCategory()
+                        + "\nDateTime: " + weatherEntryInIter.getTime()
+//                    + "\nID: " + weatherEntryInIter.getId()
+                        + "\nPersistence: " + weatherEntryInIter.getPersistence());
+            }
+
+            /* set the persistence and the time in millis for this point */
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                weatherTimeInMillis = weatherEntryInIter.getTimeInMillis();
+                ageCategory = updateDataAge(weatherTimeInMillis, currentDateMillis, howLongVisible,
+                        howLongStored);
+            }
+            weatherEntryInIter.setPersistence(ageCategory);
+            modifiedWeatherList.add(elementIndex, weatherEntryInIter);
+        }
+        Log.i(TAG, "maintainWeatherDatabase: maintenance should be done; cache it.");
+
+        /* store the weather list back into the database by iteratively updating each data point */
+        cachingExecutor.submit(new CacheDataInDbsTask(modifiedWeatherList, weatherDaoReference,
+                false, true));
+    }
+
+    /* */
+    public static void clearOldWeatherData() {
+        /* (blocking) query the weather db for entire list, via caching executor */
+        List<Weather> weatherList = getWeatherDataEntriesFromDb();
+//        Future<List<Weather>> getWeatherListFromDbTaskMethod = getForecastFromDbNonBlocking();
+//        try {
+//            weatherList = getWeatherListFromDbTaskMethod.get();
+//        } catch (Exception e) {
+//            Log.d(TAG, "clearOldWeatherData: exception; weather data not fetched. ");
+//            e.printStackTrace();
+//        }
+//        if (weatherList == null) {
+//            Log.d(TAG, "clearOldWeatherData: data not fetched; no deletion to be done. ");
+//            return;
+//        }
+
+        boolean printWeatherInfo = false;
+        Iterator iter = weatherList.iterator();
+        while (iter.hasNext()) {
+            Weather weatherEntryInIter = (Weather) iter.next();
+            Integer elementIndex = weatherList.indexOf(weatherEntryInIter);
+            if (printWeatherInfo) {
+                Log.i(TAG, "\nElement index: " + elementIndex
+                        + "\nPoint type: (0 is 12hr, 1 is 1hr): " + weatherEntryInIter.getCategory()
+                        + "\nDateTime: " + weatherEntryInIter.getTime()
+                        + "\nID: " + weatherEntryInIter.getId()
+                        + "\nPersistence: " + weatherEntryInIter.getPersistence());
+            }
+
+            if (weatherEntryInIter.getPersistence() == MORE_THAN_A_WEEK) {
+                weatherDaoReference.delete(weatherEntryInIter);
+            }
+        }
+    }
+
+    /* checks if forecast of a type, for the time period, in a location, are in the db */
+    private static boolean dataNeedsFetching(Integer dataCategory, MonitorLocation location) {
+        Log.d(TAG, "dataNeedsFetching: check if dataCategory: "
+                +dataCategory+"; needs fetching. 1: hourly, 0: twelve hours.");
+        List<Weather> weatherList = null;
+
+        /* get start of current hour */
+        Calendar today = Calendar.getInstance(); // .getInstance(TimeZone.getTimeZone("Belgrade"));
+        today.set(Calendar.MILLISECOND, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MINUTE, 0);
+        long startOfHour = today.getTimeInMillis(); // add 1hr for +01:00 ?
+        long startOfHourNext = startOfHour + 3600000;
+        Log.d(TAG, "dataNeedsFetching: current hour millis: "+startOfHour);
+
+        Future<List<Weather>> checkDataTask = getForecastFromDbNonBlocking();
+        try {
+            weatherList = checkDataTask.get();
+        } catch (Exception e){
+            e.printStackTrace();
+            return true;
+        }
+
+        String locationName = location.getLocalizedName();
+        Iterator iter = weatherList.iterator();
+        while (iter.hasNext()) {
+            Weather weatherEntryInIter = (Weather) iter.next();
+
+            /* for API forecasts, the next hour is checked */
+            if (dataCategory == SINGLE_HOUR_DATA || dataCategory == TWELVE_HOURS_DATA) {
+                if ((weatherEntryInIter.getCategory() == dataCategory)
+                        && (weatherEntryInIter.getTimeInMillis() == startOfHourNext)
+                        && (weatherEntryInIter.getLocation().equals(locationName))) {
+                    Log.d(TAG, "dataNeedsFetching for this hour: NO, weather data type(API " +
+                            "forecast):" + dataCategory + "location:|" + locationName
+                            + "| is already present in db");
+                    return false;
+                }
+
+                /* for the sensor, the current hour is checked */
+            } else if (dataCategory == TEMPERATURE_SENSOR) {
+                if ((weatherEntryInIter.getCategory() == dataCategory)
+                        && (weatherEntryInIter.getTimeInMillis() == startOfHour)
+                        && (weatherEntryInIter.getLocation().equals(locationName))) {
+                    Log.d(TAG, "dataNeedsFetching for this hour: NO, weather data type (sensor):"
+                            + dataCategory + "location:|" + locationName + "| is present in db");
+                    return false;
+                }
+            } else {} /* other potential options */
+
+        }
+        Log.d(TAG, "dataNeedsFetching for this hour: YES, weather data type:"
+                +dataCategory+"location:"+locationName+ " not present in db");
+        return true;
+    }
+
+    /* prepares data about to be inserted into database */
+    private static void setAnalyticsToWeatherData(List<Weather> weatherList, String localizedName,
+                                                  Integer persistence, Integer category) {
+        Iterator iter = weatherList.iterator();
+        while (iter.hasNext()) {
+            Weather weatherEntryInIter = (Weather) iter.next();
+            if (localizedName != null) {
+                weatherEntryInIter.setLocation(localizedName);
+            }
+            if (persistence != null) {
+                weatherEntryInIter.setPersistence(persistence);
+            }
+            if (category != null) {
+                weatherEntryInIter.setCategory(category);
+            }
+
+            long weatherTimeInMillis = getWeatherDataPointTime(weatherEntryInIter.getTime());
+            if (weatherTimeInMillis == 0) {
+                Log.d(TAG, "setAnalyticsToWeatherData: ERROR: " +
+                        "MILLIS DEFAULT TO 0, API FORMAT NOT READ.");
+            }
+            weatherEntryInIter.setTimeInMillis(weatherTimeInMillis);
+        }
+    }
+
+    public static List<Weather> getWeatherDataEntriesFromDb() {
+        /* (blocking) query the weather db for entire list, via caching executor */
+        List<Weather> weatherList = null;
+        Future<List<Weather>> getWeatherListFromDbTaskMethod = getForecastFromDbNonBlocking();
+        try {
+            weatherList = getWeatherListFromDbTaskMethod.get();
+        } catch (Exception e) {
+            Log.d(TAG, "getWeatherDataEntriesFromDb: exception; weather data not fetched. ");
+            e.printStackTrace();
+        }
+        if (weatherList == null) {
+            Log.d(TAG, "getWeatherDataEntriesFromDb: data returns null ");
+        }
+        return weatherList;
+    }
 }

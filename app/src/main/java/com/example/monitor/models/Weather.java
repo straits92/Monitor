@@ -18,6 +18,10 @@ public class Weather {
         this.celsius = celsius;
     }
 
+    public void setHumidity(String humidity) {
+        this.humidity = humidity;
+    }
+
     public void setLink(String link) {
         this.link = link;
     }
@@ -47,6 +51,7 @@ public class Weather {
     }
 
     private String celsius;
+    private String humidity;
     private String link;
     private String time;
     private String location; /* this is the string name of the city in which temperature measured  */
@@ -56,9 +61,10 @@ public class Weather {
     /* add humidity etc ... */
 
 
-    public Weather(String celsius, String link, String time, String location, Integer persistence,
-                   Integer category, long timeInMillis) {
+    public Weather(String celsius, String humidity, String link, String time, String location,
+                   Integer persistence, Integer category, long timeInMillis) {
         this.celsius = celsius;
+        this.humidity = humidity;
         this.link = link;
         this.time = time;
         this.location = location;
@@ -73,6 +79,10 @@ public class Weather {
 
     public String getCelsius() {
         return celsius;
+    }
+
+    public String getHumidity() {
+        return humidity;
     }
 
     public String getLink() {
@@ -98,6 +108,5 @@ public class Weather {
     public long getTimeInMillis() {
         return timeInMillis;
     }
-
 
 }

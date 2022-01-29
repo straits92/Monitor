@@ -41,7 +41,7 @@ public class NetworkUtils {
     private static final String LAN_URL_INSTANT = "http://"+LAN_IP_PI_4B+SUBDIR_INSTANT;
 
     /* Internet */
-    private static final String NGROK_TUNNEL_LINK_TEMP = "http://23d2-178-220-205-175.ngrok.io";
+    private static final String NGROK_TUNNEL_LINK_TEMP = "http://8920-178-221-182-107.ngrok.io";
     private static final String NGROK_URL_1HOUR = NGROK_TUNNEL_LINK_TEMP +SUBDIR_HOURLY;
     private static final String NGROK_URL_INSTANT = NGROK_TUNNEL_LINK_TEMP +SUBDIR_INSTANT;
 
@@ -73,13 +73,14 @@ public class NetworkUtils {
             builtUri = Uri.parse(requestScheme+location).buildUpon()
                     .appendQueryParameter(PARAM_API_KEY, API_KEY)
                     .appendQueryParameter(PARAM_METRIC_KEY, "true") /* request temp. in Celsius */
+                    .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
                     .build();
         } else if (forecastType == 1){
             requestScheme = WEATHERDB_BASE_URL_1HOUR;
             builtUri = Uri.parse(requestScheme+location).buildUpon()
                     .appendQueryParameter(PARAM_API_KEY, API_KEY)
                     .appendQueryParameter(PARAM_METRIC_KEY, "true")
-//                .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
+                    .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
                     .build();
         } else if (forecastType == 2) {
             requestScheme = NGROK_URL_1HOUR; // LAN_URL_1HOUR
@@ -92,6 +93,7 @@ public class NetworkUtils {
             builtUri = Uri.parse(requestScheme+location).buildUpon()
                     .appendQueryParameter(PARAM_API_KEY, API_KEY)
                     .appendQueryParameter(PARAM_METRIC_KEY, "true")
+                    .appendQueryParameter(PARAM_DETAILS, "true") /* request full details */
                     .build();
         }
 

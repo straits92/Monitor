@@ -19,6 +19,5 @@
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>
-        <item>placeholder_0</item>
     </string-array>
 </resources>
