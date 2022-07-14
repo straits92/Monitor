@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
@@ -71,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private Button homeLocation;
     private Button sensorQuery;
+    private Button navigateToDevices;
     private TextView sensorQueryOutput;
     private TextView sensorQueryTimestamp;
     private LineChart weatherLineChart;
@@ -99,6 +101,8 @@ public class MainActivity extends AppCompatActivity {
         sensorQueryOutput.setText("N/A");
         sensorQueryTimestamp.setText("N/A");
 
+        navigateToDevices = findViewById(R.id.idNavigateToDevices); // set up its fcn
+
         /* initialize recycler view used for debugging */
         LinearLayoutManager llm = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(llm); /* necessary for forming the recyclerview */
@@ -111,6 +115,15 @@ public class MainActivity extends AppCompatActivity {
 
         /* initialize ViewModel scoped to lifecycle of this activity; android will destroy it at end */
         weatherViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
+
+        /* switch to device selection and control panel */
+        navigateToDevices.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, DeviceActivity.class);
+                startActivity(intent);
+            }
+        });
 
         /* observers */
         /* observe() is a LiveData callback to weather data. When the data changes, redraw. */
@@ -370,6 +383,8 @@ public class MainActivity extends AppCompatActivity {
                         "handle display.");
             }
         });
+
+
 
     /* convert the timestamp representation back to a Date and then into something human readable */
     public class HourAxisValueFormatter extends ValueFormatter {

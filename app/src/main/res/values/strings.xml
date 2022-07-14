@@ -16,8 +16,18 @@
     <string name="sensorReadingTimestamp">[time]</string>
     <string name="sensorReadingHeader1">Timestamp</string>
     <string name="sensorReadingHeader2">Temp (*C)</string>
+    <string name="deviceButton">device</string>
+    <string name="dropDownDeviceSelection">Selected Device</string>
+    <string name="navigateToSensors">go to sensors</string>
+    <string name="navigateToDevices">go to devices</string>
+    <string name="outputSeekBarTitle">Output Value</string>
+    <string name="switchTitle">Toggle on/off</string>
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>
+    </string-array>
+    <string-array name="monitoring_devices">
+        <item>LED Light</item>
+        <item>Placeholder Device</item>
     </string-array>
 </resources>
