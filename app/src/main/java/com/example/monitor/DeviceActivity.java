@@ -18,12 +18,15 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import com.example.monitor.models.Weather;
+import com.example.monitor.repositories.networkutils.MQTTConnection;
 import com.github.mikephil.charting.charts.LineChart;
 
 import java.util.List;
 
 public class DeviceActivity extends AppCompatActivity {
     private static final String TAG = "DeviceActivity|";
+    private static Float MAX_LED_INTENSITY = 35.0f;
+    private static Float MAX_SEEKBAR_VALUE = 100.0f;
 
     /* declare display elements here */
     private AutoCompleteTextView dropDownListDevices;
@@ -37,6 +40,8 @@ public class DeviceActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
+
+        MQTTConnection.publishBlocking("DeviceActivity_MonitorApp_test", "general");
 
         navigateToSensors = findViewById(R.id.idNavigateToSensors);
 
@@ -113,8 +118,10 @@ public class DeviceActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                Integer value = seekBar.getProgress();
-                Log.d(TAG, "new seekBar value is: "+value);
+                Float value = (float)seekBar.getProgress();
+                Float scaledValue = (value/MAX_SEEKBAR_VALUE)*MAX_LED_INTENSITY;
+                Log.d(TAG, "seekBar value: "+value+"| scaled LED intensity: "+scaledValue);
+                MQTTConnection.publishBlocking("D0="+scaledValue.intValue()+";", "devices/LED_0/value");
             }
         });
 

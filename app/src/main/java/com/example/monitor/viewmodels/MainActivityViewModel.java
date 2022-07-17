@@ -40,6 +40,8 @@ public class MainActivityViewModel extends AndroidViewModel {
         locationData = weatherRepository.getLocationData();
         isUpdating = weatherRepository.getIsUpdating();
         instantSensorReading = weatherRepository.getInstantSensorReading();
+
+
     }
 
     public LiveData<Boolean> getIsUpdating() {

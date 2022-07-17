@@ -30,6 +30,7 @@ import android.widget.TextView;
 import com.example.monitor.adapters.RecyclerWeatherAdapter;
 import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
+import com.example.monitor.repositories.networkutils.MQTTConnection;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -40,7 +41,9 @@ import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.utils.EntryXComparator;
+import com.hivemq.client.internal.mqtt.message.MqttMessage;
 
+import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -78,10 +81,17 @@ public class MainActivity extends AppCompatActivity {
     private LineChart weatherLineChart;
     private AutoCompleteTextView dropDownListParams;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        /* Connect to MQTT and send a test message; check if connxn persists after closing the app */
+        MQTTConnection.getInstance(); // doesn't look like it needs to be referenced
+        MQTTConnection.connectBlocking();
+        MQTTConnection.publishBlocking("MainActivity_MonitorApp_test", "general");
+        MQTTConnection.subscribeBlocking("sensors/json");
 
         /* set up dropdown list based on hardcoded parameters in ~/res/values/strings */
         String[] monitorParameters = getResources().getStringArray(R.array.monitoring_parameters);
@@ -202,6 +212,13 @@ public class MainActivity extends AppCompatActivity {
                 redrawGraph(weathers);
             }
         });
+
+    }
+
+    public void dummy_publish(/*View v*/) {
+        String topic = "general/"; // try without /
+        String payload = "Msg published from android app";
+        byte[] encodedPayload;
 
     }
 
