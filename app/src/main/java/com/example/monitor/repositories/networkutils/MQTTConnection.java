@@ -23,12 +23,10 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class MQTTConnection {
-
-    static final String TAG = "MQTTConnection";
+    private static final String TAG = "MQTTConnection";
     private static MQTTConnection instance;
-    static Mqtt5Client client;
+    private static Mqtt5Client client;
 
-    // singleton
     public static MQTTConnection getInstance() {
         if (instance == null) {
             String MQTTHOST = BrokerData.getMQTTHOST();
@@ -52,6 +50,7 @@ public class MQTTConnection {
         return instance;
     }
 
+    /*** methods to be used across activities and layers ***/
     public static String connectBlocking() {
         try {
             Mqtt5ConnAck connAckMessage = client.toBlocking().connect();
@@ -87,5 +86,13 @@ public class MQTTConnection {
                         new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8));}).send();
         return 0;
     }
+
+    // needs methods to check connection and reconnect if necessary
+
+
+    // needs option for async reconnection, async topic reading (upon subscribing) and async publishing
+
+
+
 
 }

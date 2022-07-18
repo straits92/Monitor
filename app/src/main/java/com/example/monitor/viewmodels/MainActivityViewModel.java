@@ -12,17 +12,21 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.WeatherRepository;
+import com.example.monitor.repositories.networkutils.MQTTConnection;
 
 import java.util.List;
 
 /* ViewModel for temperature data */
 public class MainActivityViewModel extends AndroidViewModel {
-    private static final String TAG = "ViewModel";
+    private static final String TAG = "MainActivityViewModel";
 
     /* observable data */
     private final MutableLiveData<Boolean> isUpdating;
     private LiveData<List<Weather>> immutableWeatherDataEntries;
     private LiveData<List<MonitorLocation>> locationData;
+
+    /* mqtt */
+    private MQTTConnection MQTTmodule;
 
     /* package instant sensor reading into LiveData, separate from any db updates */
     private MutableLiveData<String> instantSensorReading;
@@ -35,13 +39,16 @@ public class MainActivityViewModel extends AndroidViewModel {
         super(application);
         weatherRepository = new WeatherRepository(application);
 
+        /* set up connecting variables to the repository */
         /* LiveData flow: Database -> Repository -> ViewModel -> MainActivity  */
         immutableWeatherDataEntries = weatherRepository.getWeatherDataEntries();
         locationData = weatherRepository.getLocationData();
         isUpdating = weatherRepository.getIsUpdating();
         instantSensorReading = weatherRepository.getInstantSensorReading();
 
-
+        /* initialize MQTT for the entire app */
+        MQTTmodule = MQTTConnection.getInstance(); // no need for the reference at this point
+        MQTTConnection.connectBlocking();
     }
 
     public LiveData<Boolean> getIsUpdating() {

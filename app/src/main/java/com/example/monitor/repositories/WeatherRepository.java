@@ -35,8 +35,7 @@ public class WeatherRepository {
     /* repository is aware if something is updating */
     private MutableLiveData<Boolean> isUpdating = new MutableLiveData<>();
 
-    /* package instant sensor reading into LiveData, separate from any db updates;
-    * but what happens to it when the app is closed; does this data persist? */
+    /* package instant sensor reading into LiveData, separate from any db updates */
     private MutableLiveData<String> instantSensorReading = new MutableLiveData<>();
 
     /* potential singleton alternative: return static instance via getInstance(application) */

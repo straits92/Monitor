@@ -72,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
 
     /* declare display elements here */
     private RecyclerView recyclerView;
-    private ProgressBar progressBar;
     private Button homeLocation;
     private Button sensorQuery;
     private Button navigateToDevices;
@@ -87,12 +86,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        /* Connect to MQTT and send a test message; check if connxn persists after closing the app */
-        MQTTConnection.getInstance(); // doesn't look like it needs to be referenced
-        MQTTConnection.connectBlocking();
-        MQTTConnection.publishBlocking("MainActivity_MonitorApp_test", "general");
-        MQTTConnection.subscribeBlocking("sensors/json");
-
         /* set up dropdown list based on hardcoded parameters in ~/res/values/strings */
         String[] monitorParameters = getResources().getStringArray(R.array.monitoring_parameters);
         ArrayAdapter dropDownListParametersAdapter = new ArrayAdapter(this,
@@ -102,16 +95,14 @@ public class MainActivity extends AppCompatActivity {
 
         /* initiate display elements */
         recyclerView = findViewById(R.id.recyclerView);
-//        progressBar = findViewById(R.id.progressBar);
-        homeLocation = findViewById(R.id.homeLocation); /* should have an onClick too */
+        homeLocation = findViewById(R.id.homeLocation);
         weatherLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
         sensorQuery = findViewById(R.id.getSensorReading);
         sensorQueryOutput = findViewById(R.id.instantSensorReading);
         sensorQueryTimestamp = findViewById(R.id.sensorReadingTimestamp);
         sensorQueryOutput.setText("N/A");
         sensorQueryTimestamp.setText("N/A");
-
-        navigateToDevices = findViewById(R.id.idNavigateToDevices); // set up its fcn
+        navigateToDevices = findViewById(R.id.idNavigateToDevices);
 
         /* initialize recycler view used for debugging */
         LinearLayoutManager llm = new LinearLayoutManager(this);
@@ -123,15 +114,20 @@ public class MainActivity extends AppCompatActivity {
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION);
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
 
-        /* initialize ViewModel scoped to lifecycle of this activity; android will destroy it at end */
+        /* initialize ViewModel scoped to lifecycle of mainactivity; android to destroy it at end */
         weatherViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
-        /* switch to device selection and control panel */
+        /* test publish and test subscription for mqtt from this activity  */
+        MQTTConnection.publishBlocking("MainActivity_MonitorApp_test", "general");
+        MQTTConnection.subscribeBlocking("sensors/json");
+
+        /* switch to device control panels, without creating the activity+viewmodel anew */
         navigateToDevices.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, DeviceActivity.class);
-                startActivity(intent);
+                Intent openDeviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
+                openDeviceActivity.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivityIfNeeded(openDeviceActivity, 0);
             }
         });
 
@@ -146,8 +142,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         /* update home location button/display; potentially, a location change should also prompt
-        * an immediate request for a 12hr forecast.
-        * (not implemented) */
+        * an immediate request for a 12hr forecast. (not implemented) */
         weatherViewModel.getLocationData().observe(this,
                 new Observer<List<MonitorLocation>>(){
             @Override
@@ -215,33 +210,25 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void dummy_publish(/*View v*/) {
-        String topic = "general/"; // try without /
-        String payload = "Msg published from android app";
-        byte[] encodedPayload;
-
-    }
-
     /* graphing utilities */
     private void redrawGraph(List<Weather> weathers) {
         String selectedParameter = dropDownListParams.getText().toString();
         Integer selectedParam = 0;
         long dailyTimeOrigin = getStartOfTodayMillis();
-        Log.d(TAG, "onClick: user selected the following option in drop-down menu: "
-                + selectedParameter);
+//        Log.d(TAG, "onClick: user selected the following option in drop-down menu: "
+//                + selectedParameter);
 
         if (selectedParameter.equals("Temperature")) {
             selectedParam = TEMPERATURE;
         } else if (selectedParameter.equals("Humidity")) {
             selectedParam = HUMIDITY;
         } else {
-            Log.i(TAG, "OnClickListener: no valid data selected from drop-down list");
+//            Log.i(TAG, "OnClickListener: no valid data selected from drop-down list");
         }
 
         /* draw the obtained data on the display */
         bindDataToGraph(dailyTimeOrigin, weathers, selectedParam);
 
-        return;
     }
 
     private void bindDataToGraph(long dailyTimeOrigin, List<Weather> weathers, Integer selectedParam) {
@@ -293,8 +280,6 @@ public class MainActivity extends AppCompatActivity {
         lineDataSets.add(sensorTemperatureSet);
 
         weatherLineChart.setData(new LineData(lineDataSets));
-
-        return;
     }
 
     private void separateWeatherDataTrendsFixed(long dailyTimeOrigin, List<Weather> weathers,
@@ -381,10 +366,6 @@ public class MainActivity extends AppCompatActivity {
 
         return;
     }
-
-    /* helpers for the progress bar */
-    private void showProgressBar() { progressBar.setVisibility(View.VISIBLE);}
-    private void hideProgressBar() { progressBar.setVisibility(View.INVISIBLE);}
 
     /* GPS permissions */
     private ActivityResultLauncher<String> requestPermissionLauncher =
