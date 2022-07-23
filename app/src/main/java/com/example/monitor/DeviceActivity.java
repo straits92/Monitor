@@ -25,6 +25,7 @@ import android.widget.TextView;
 
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.networkutils.MQTTConnection;
+import com.example.monitor.repositories.networkutils.TopicData;
 import com.example.monitor.viewmodels.DeviceActivityViewModel;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.github.mikephil.charting.charts.LineChart;
@@ -165,6 +166,8 @@ public class DeviceActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "hiddenOne clicked.");
+                MQTTConnection.getRetainedMsgFromTopic(TopicData.getJsonSensorData());
+
             }
         });
 
@@ -192,7 +195,7 @@ public class DeviceActivity extends AppCompatActivity {
                 Float value = (float)seekBarIntValue;
                 Float scaledValue = (value/MAX_SEEKBAR_VALUE)*MAX_LED_INTENSITY;
                 Log.d(TAG, "seekBar value: "+value+"| scaled LED intensity: "+scaledValue);
-                MQTTConnection.publishBlocking("D0="+scaledValue.intValue()+";", "devices/LED_0/value");
+                MQTTConnection.publishBlocking("D0="+scaledValue.intValue()+";", TopicData.getDeviceTopics(0));
                 LEDIntensity = seekBar.getProgress();
             }
         });

@@ -12,10 +12,16 @@ import com.example.monitor.databases.LocationDao;
 import com.example.monitor.databases.WeatherDao;
 import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
+import com.example.monitor.repositories.networkutils.MQTTConnection;
 import com.example.monitor.repositories.networkutils.NetworkUtils;
+import com.example.monitor.repositories.networkutils.TopicData;
 import com.example.monitor.repositories.parseutils.ParseUtils;
+import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
+import com.hivemq.client.mqtt.mqtt5.Mqtt5Client;
+import com.hivemq.client.mqtt.mqtt5.message.subscribe.suback.Mqtt5SubAck;
 
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -24,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -129,24 +136,32 @@ public class RemoteDataFetchModel {
     /* (not implemented) offer an option to get instant sensor reading of humidity */
     public static synchronized void updateSensorReadingOnPrompt() {
         serviceExecutor.submit(new Runnable() {
+
+            @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
             public void run() {
-                List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR_INSTANT,
+/*                List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR_INSTANT,
                         defaultHomeLocation,"successfully obtained instant sensor " +
                                 "temperature from LAN or ngrok URL.");
                 if (sensorWeatherList != null) {
                     setAnalyticsToWeatherData(sensorWeatherList,
                             defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR_INSTANT);
                     String hms = sensorWeatherList.get(0).getTime().substring(11, 19);
-                    /* modify LiveData visible in MainActivity */
+                    *//* modify LiveData visible in MainActivity *//*
                     instantSensorReading.postValue("["+sensorWeatherList.get(0).getCelsius()
                             +"]C, ["+hms+"]");
 //                    sensorWeatherList.get(0).getHumidity();
                 } else {
                     Log.i(TAG, "updateSensorReadingOnPrompt: sensor data returns null");
                     instantSensorReading.postValue("XXXXXXXXXXXXXXXXXXX");
-                }
+                }*/
+
+
+                // also needs to set analytics to weather data
+                MQTTConnection.getMsgAndChangeLiveData(TopicData.getJsonSensorData(), instantSensorReading);
+
             }
+
         });
     }
 
@@ -248,6 +263,10 @@ public class RemoteDataFetchModel {
         return weatherList;
     }
 
+
+
+
+
     @RequiresApi(api = Build.VERSION_CODES.N)
     private static Integer updateDataAge(long weatherTimeInMillis, long currentDateMillis,
                                          Integer howLongVisible, Integer howLongStored) {
@@ -348,21 +367,47 @@ public class RemoteDataFetchModel {
                     }
                 }
 
-                /* temperature sensor fetching, should also be scheduled (check if json read): */
-                if (dataNeedsFetching(TEMPERATURE_SENSOR, defaultHomeLocation)) {
-                    List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR,
-                            defaultHomeLocation,
-                            "successfully obtained hourly sensor temperature from LAN " +
-                                    "or ngrok URL.");
+                /* temperature sensor fetching via ngrok, should also be scheduled (check if json read): */
+//                if (dataNeedsFetching(TEMPERATURE_SENSOR, defaultHomeLocation)) {
+//                    List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR,
+//                            defaultHomeLocation,
+//                            "successfully obtained hourly sensor temperature from LAN " +
+//                                    "or ngrok URL.");
+//
+//                    if (sensorWeatherList != null) {
+//                        setAnalyticsToWeatherData(sensorWeatherList,
+//                                defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
+//                        cachingExecutor.submit(new CacheDataInDbsTask(sensorWeatherList.get(0),
+//                                weatherDaoReference,false));
+//                    } else {
+//                        Log.i(TAG, "scheduled task: temperature sensor data returns as null");
+//                    }
+//                }
 
-                    if (sensorWeatherList != null) {
-                        setAnalyticsToWeatherData(sensorWeatherList,
-                                defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
-                        cachingExecutor.submit(new CacheDataInDbsTask(sensorWeatherList.get(0),
-                                weatherDaoReference,false));
-                    } else {
-                        Log.i(TAG, "scheduled task: temperature sensor data returns as null");
-                    }
+                /* temperature sensor read from MQTT */
+                // current issue is that it also reads the last retained mqtt message.
+                // so if the last retained is hours ago, that's the datapoint that will be added
+                // so then the time needs to be checked and if not matching current hour, eliminated.
+                if (dataNeedsFetching(TEMPERATURE_SENSOR, defaultHomeLocation)) {
+                    Mqtt5Client mqtt5Client = MQTTConnection.getClient();
+                    mqtt5Client.toAsync().subscribeWith().topicFilter(TopicData.getJsonSensorData())/*.qos(MqttQos.AT_LEAST_ONCE)*/
+                            .callback(publish -> {
+                                String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
+                                System.out.println("Received hourly data in callback " +
+                                        publish.getTopic() + ": " +
+                                        payload);
+                                mqtt5Client.toBlocking().unsubscribeWith().topicFilter(TopicData.getJsonSensorData()).send();
+
+                                List<Weather> sensorWeatherList = ParseUtils.parseWeatherJSON("["+payload+"]");
+                                if (sensorWeatherList != null) {
+                                    setAnalyticsToWeatherData(sensorWeatherList,
+                                            defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
+                                    cachingExecutor.submit(new CacheDataInDbsTask(sensorWeatherList.get(0),
+                                            weatherDaoReference,false));
+                                } else {
+                                    Log.i(TAG, "scheduled task in mqtt callback: temperature sensor data null");
+                                }
+                            }).send();
                 }
 
             }

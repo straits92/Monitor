@@ -31,6 +31,7 @@ import com.example.monitor.adapters.RecyclerWeatherAdapter;
 import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.networkutils.MQTTConnection;
+import com.example.monitor.repositories.networkutils.TopicData;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -118,8 +119,8 @@ public class MainActivity extends AppCompatActivity {
         weatherViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
         /* test publish and test subscription for mqtt from this activity  */
-        MQTTConnection.publishBlocking("MainActivity_MonitorApp_test", "general");
-        MQTTConnection.subscribeBlocking("sensors/json");
+        MQTTConnection.publishBlocking(TAG+"_MonitorApp_test", TopicData.getGeneralTopic());
+//        MQTTConnection.subscribeBlocking(TopicData.getJsonSensorData());
 
         /* switch to device control panels, without creating the activity+viewmodel anew */
         navigateToDevices.setOnClickListener(new View.OnClickListener() {

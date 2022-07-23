@@ -3,6 +3,9 @@ package com.example.monitor.viewmodels;
 import android.util.Log;
 import androidx.lifecycle.ViewModel;
 
+import com.example.monitor.repositories.networkutils.MQTTConnection;
+import com.example.monitor.repositories.networkutils.TopicData;
+
 public class DeviceActivityViewModel extends ViewModel {
 //    private SavedStateHandle savedStateHandle;
     private static final String TAG = "DeviceActivityViewModel";
@@ -15,13 +18,16 @@ public class DeviceActivityViewModel extends ViewModel {
 
     public DeviceActivityViewModel(/*@NonNull Application application, SavedStateHandle handle*/) {
 //        super(application);
-        Log.d(TAG, "DeviceActivityViewModel: vm created");
+        Log.d(TAG, "DeviceActivityViewModel: viewmodel created");
     }
 
     @Override
     protected void onCleared() {
         super.onCleared();
-        Log.d(TAG, "onCleared: vm got destroyed");
+        Log.d(TAG, "onCleared: viewmodel destroyed; LED device turned off");
+        MQTTConnection.publishBlocking("D0="+0+";", TopicData.getDeviceTopics(0));
     }
+
+
 
 }

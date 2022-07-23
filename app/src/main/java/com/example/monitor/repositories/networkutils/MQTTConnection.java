@@ -1,31 +1,35 @@
 package com.example.monitor.repositories.networkutils;
 
+import android.os.Build;
 import android.util.Log;
 
-import com.hivemq.client.internal.mqtt.handler.subscribe.MqttSubscriptionHandler;
-import com.hivemq.client.internal.mqtt.message.subscribe.suback.MqttSubAck;
-import com.hivemq.client.mqtt.MqttGlobalPublishFilter;
+import androidx.annotation.RequiresApi;
+import androidx.lifecycle.MutableLiveData;
+
+import com.example.monitor.models.Weather;
+import com.example.monitor.repositories.execmodel.CacheDataInDbsTask;
+import com.example.monitor.repositories.parseutils.ParseUtils;
 import com.hivemq.client.mqtt.datatypes.MqttQos;
-import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
-import com.hivemq.client.mqtt.mqtt5.Mqtt5BlockingClient;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5Client;
-import com.hivemq.client.mqtt.mqtt5.message.Mqtt5Message;
-import com.hivemq.client.mqtt.mqtt5.message.Mqtt5MessageType;
 import com.hivemq.client.mqtt.mqtt5.message.connect.connack.Mqtt5ConnAck;
-import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5Publish;
-import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5PublishResult;
-import com.hivemq.client.mqtt.mqtt5.message.subscribe.Mqtt5Subscribe;
-import com.hivemq.client.mqtt.mqtt5.message.subscribe.Mqtt5SubscribeBuilder;
-import com.hivemq.client.mqtt.mqtt5.message.subscribe.Mqtt5Subscription;
+import com.hivemq.client.mqtt.mqtt5.message.subscribe.suback.Mqtt5SubAck;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 public class MQTTConnection {
     private static final String TAG = "MQTTConnection";
     private static MQTTConnection instance;
+
     private static Mqtt5Client client;
+
+    public static Mqtt5Client getClient() {
+        return client;
+    }
 
     public static MQTTConnection getInstance() {
         if (instance == null) {
@@ -90,9 +94,54 @@ public class MQTTConnection {
     // needs methods to check connection and reconnect if necessary
 
 
-    // needs option for async reconnection, async topic reading (upon subscribing) and async publishing
+    /* subscribe asynchronously, get last retained message on topic, then unsubscribe */
+    public static void getRetainedMsgFromTopic(String topic) {
+        client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
+                .callback(publish -> {
+                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
+                    System.out.println("Received message on topic " +
+                        publish.getTopic() + ": " +
+                        payload);
+                    client.toBlocking().unsubscribeWith().topicFilter(topic).send();
+                }).send();
+    }
 
 
+
+    /* subscribe asynchronously, get last retained message on topic, unsubscribe, change LiveData object */
+    public static void getMsgAndChangeLiveData(String topic, MutableLiveData<String> instantSensorReading) {
+        client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
+                .callback(publish -> {
+                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
+                    System.out.println("Received message on topic " +
+                            publish.getTopic() + ": " +
+                            payload);
+                    client.toBlocking().unsubscribeWith().topicFilter(topic).send();
+
+                    List<Weather> weatherList = ParseUtils.parseWeatherJSON("["+payload+"]");
+
+                    String hms = weatherList.get(0).getTime().substring(11, 19);
+                    /* modify LiveData visible in MainActivity */
+                    instantSensorReading.postValue("["+weatherList.get(0).getCelsius()
+                            +"]C, ["+hms+"]");
+                }).send();
+    }
+
+
+    /* subscribe asynchronously, get last retained message on topic, unsubscribe, change LiveData object */
+    public static void getMsgAndUpdateCache(String topic) {
+        client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
+                .callback(publish -> {
+                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
+                    System.out.println("Received message on topic " +
+                            publish.getTopic() + ": " +
+                            payload);
+                    client.toBlocking().unsubscribeWith().topicFilter(topic).send();
+
+                    List<Weather> weatherList = ParseUtils.parseWeatherJSON(payload);
+
+                }).send();
+    }
 
 
 }
