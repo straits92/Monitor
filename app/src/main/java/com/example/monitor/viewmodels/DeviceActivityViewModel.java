@@ -28,6 +28,4 @@ public class DeviceActivityViewModel extends ViewModel {
         MQTTConnection.publishBlocking("D0="+0+";", TopicData.getDeviceTopics(0));
     }
 
-
-
 }

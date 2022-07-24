@@ -24,7 +24,6 @@ import java.util.concurrent.Future;
 public class MQTTConnection {
     private static final String TAG = "MQTTConnection";
     private static MQTTConnection instance;
-
     private static Mqtt5Client client;
 
     public static Mqtt5Client getClient() {
@@ -91,9 +90,6 @@ public class MQTTConnection {
         return 0;
     }
 
-    // needs methods to check connection and reconnect if necessary
-
-
     /* subscribe asynchronously, get last retained message on topic, then unsubscribe */
     public static void getRetainedMsgFromTopic(String topic) {
         client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
@@ -106,42 +102,6 @@ public class MQTTConnection {
                 }).send();
     }
 
-
-
-    /* subscribe asynchronously, get last retained message on topic, unsubscribe, change LiveData object */
-    public static void getMsgAndChangeLiveData(String topic, MutableLiveData<String> instantSensorReading) {
-        client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
-                .callback(publish -> {
-                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
-                    System.out.println("Received message on topic " +
-                            publish.getTopic() + ": " +
-                            payload);
-                    client.toBlocking().unsubscribeWith().topicFilter(topic).send();
-
-                    List<Weather> weatherList = ParseUtils.parseWeatherJSON("["+payload+"]");
-
-                    String hms = weatherList.get(0).getTime().substring(11, 19);
-                    /* modify LiveData visible in MainActivity */
-                    instantSensorReading.postValue("["+weatherList.get(0).getCelsius()
-                            +"]C, ["+hms+"]");
-                }).send();
-    }
-
-
-    /* subscribe asynchronously, get last retained message on topic, unsubscribe, change LiveData object */
-    public static void getMsgAndUpdateCache(String topic) {
-        client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
-                .callback(publish -> {
-                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
-                    System.out.println("Received message on topic " +
-                            publish.getTopic() + ": " +
-                            payload);
-                    client.toBlocking().unsubscribeWith().topicFilter(topic).send();
-
-                    List<Weather> weatherList = ParseUtils.parseWeatherJSON(payload);
-
-                }).send();
-    }
-
+    // methods for dealing with connectivity issues?
 
 }

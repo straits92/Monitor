@@ -47,6 +47,8 @@ import java.util.concurrent.TimeoutException;
 * */
 public class RemoteDataFetchModel {
     private static final String TAG = "RemoteDataFetchModel";
+    private static boolean USE_MQTT = true;
+    private static boolean USE_NGROK = false;
 
     /* enumerated constants */
     private static final Integer TEMPERATURE_SENSOR_INSTANT = 3;
@@ -74,6 +76,9 @@ public class RemoteDataFetchModel {
     private static ExecutorService gpsExecutor;
     private static ScheduledExecutorService scheduledExecutor;
 
+    /* mqtt */
+    private static Mqtt5Client mqtt5Client;
+
     /* singleton, instantiated in environment providing DAO and reference to activity  */
     public static RemoteDataFetchModel getInstance(WeatherDao weatherDao, LocationDao locationDao,
                                                    Application application,
@@ -96,6 +101,9 @@ public class RemoteDataFetchModel {
             serviceExecutor = ExecutorHelper.getServiceExecutorInstance(); // for user purposes
             scheduledExecutor = ExecutorHelper.getScheduledPoolInstance();
             gpsExecutor = ExecutorHelper.getGpsExecutorInstance();
+
+            /* mqtt reference to client */
+            mqtt5Client = MQTTConnection.getClient();
 
             /* (blocking) prep the default location data; clears the location database */
             defaultMonitorLocationList = new ArrayList<>();
@@ -136,32 +144,39 @@ public class RemoteDataFetchModel {
     /* (not implemented) offer an option to get instant sensor reading of humidity */
     public static synchronized void updateSensorReadingOnPrompt() {
         serviceExecutor.submit(new Runnable() {
-
-            @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
             public void run() {
-/*                List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR_INSTANT,
-                        defaultHomeLocation,"successfully obtained instant sensor " +
-                                "temperature from LAN or ngrok URL.");
-                if (sensorWeatherList != null) {
-                    setAnalyticsToWeatherData(sensorWeatherList,
-                            defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR_INSTANT);
-                    String hms = sensorWeatherList.get(0).getTime().substring(11, 19);
-                    *//* modify LiveData visible in MainActivity *//*
-                    instantSensorReading.postValue("["+sensorWeatherList.get(0).getCelsius()
-                            +"]C, ["+hms+"]");
-//                    sensorWeatherList.get(0).getHumidity();
-                } else {
-                    Log.i(TAG, "updateSensorReadingOnPrompt: sensor data returns null");
-                    instantSensorReading.postValue("XXXXXXXXXXXXXXXXXXX");
-                }*/
+                if (USE_NGROK) {
+                    List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR_INSTANT,
+                            defaultHomeLocation, "successfully obtained instant sensor " +
+                                    "temperature from LAN or ngrok URL.");
+                    if (sensorWeatherList != null) {
+                        String hms = sensorWeatherList.get(0).getTime().substring(11, 19);
+                        instantSensorReading.postValue("[" + sensorWeatherList.get(0).getCelsius()
+                                + "]C, [" + hms + "]");
+                    } else {
+                        Log.i(TAG, "updateSensorReadingOnPrompt: sensor data returns null");
+                        instantSensorReading.postValue("XXXXXXXXXXXXXXXXXXX");
+                    }
+                }
 
+                if (USE_MQTT) {
+                    String topic = TopicData.getJsonSensorInstantDataTopic();
+                    mqtt5Client = MQTTConnection.getClient();
+                    mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
+                            .callback(publish -> {
+                                String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
+                                System.out.println("Received data in callback, topic: " + topic + ", payload: " + payload);
+                                mqtt5Client.toBlocking().unsubscribeWith().topicFilter(topic).send();
 
-                // also needs to set analytics to weather data
-                MQTTConnection.getMsgAndChangeLiveData(TopicData.getJsonSensorData(), instantSensorReading);
-
+                                List<Weather> weatherList = ParseUtils.parseWeatherJSON(payload);
+                                String hms = weatherList.get(0).getTime().substring(11, 19);
+                                /* modify LiveData visible in MainActivity */
+                                instantSensorReading.postValue("[" + weatherList.get(0).getCelsius()
+                                        + "]C, [" + hms + "]");
+                            }).send();
+                }
             }
-
         });
     }
 
@@ -263,10 +278,6 @@ public class RemoteDataFetchModel {
         return weatherList;
     }
 
-
-
-
-
     @RequiresApi(api = Build.VERSION_CODES.N)
     private static Integer updateDataAge(long weatherTimeInMillis, long currentDateMillis,
                                          Integer howLongVisible, Integer howLongStored) {
@@ -334,6 +345,9 @@ public class RemoteDataFetchModel {
         Integer initialDelayHourly = 10;
         Integer initialDelayTwelveHour = 20;
         Integer initialDelayMaintenance = 5;
+        Integer periodicDelayHourly = 1200;
+        Integer periodicDelayTwelveHour = 3600*12;
+        Integer periodicDelayMaintenance = 3600; // make it once a day?
 
         /* set up the hourly weather query; should cancel if no response */
         scheduledExecutor.scheduleAtFixedRate(new Runnable() {
@@ -353,6 +367,7 @@ public class RemoteDataFetchModel {
                 }
 
                 /* candidate for general wrapper method; similar code used in other runnables */
+                /* single hour from Accuweather API */
                 if (dataNeedsFetching(SINGLE_HOUR_DATA, fetchedLocation)) {
                     List<Weather> hourlyWeatherList = getForecastFromNetwork(SINGLE_HOUR_DATA,
                             fetchedLocation, "successfully fetched single hr forecast.");
@@ -360,58 +375,58 @@ public class RemoteDataFetchModel {
                     if (hourlyWeatherList != null) {
                         setAnalyticsToWeatherData(hourlyWeatherList, fetchedLocation.getLocalizedName(),
                                 UNDER_48H, SINGLE_HOUR_DATA);
-                        cachingExecutor.submit(new CacheDataInDbsTask(hourlyWeatherList.get(0),
-                                weatherDaoReference,false));
+                        cachingExecutor.submit(new CacheDataInDbsTask(null, hourlyWeatherList.get(0),
+                                weatherDaoReference,false, false));
                     } else {
                         Log.i(TAG, "scheduled task: temperature sensor data returns as null");
                     }
                 }
 
-                /* temperature sensor fetching via ngrok, should also be scheduled (check if json read): */
-//                if (dataNeedsFetching(TEMPERATURE_SENSOR, defaultHomeLocation)) {
-//                    List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR,
-//                            defaultHomeLocation,
-//                            "successfully obtained hourly sensor temperature from LAN " +
-//                                    "or ngrok URL.");
-//
-//                    if (sensorWeatherList != null) {
-//                        setAnalyticsToWeatherData(sensorWeatherList,
-//                                defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
-//                        cachingExecutor.submit(new CacheDataInDbsTask(sensorWeatherList.get(0),
-//                                weatherDaoReference,false));
-//                    } else {
-//                        Log.i(TAG, "scheduled task: temperature sensor data returns as null");
-//                    }
-//                }
-
-                /* temperature sensor read from MQTT */
-                // current issue is that it also reads the last retained mqtt message.
-                // so if the last retained is hours ago, that's the datapoint that will be added
-                // so then the time needs to be checked and if not matching current hour, eliminated.
                 if (dataNeedsFetching(TEMPERATURE_SENSOR, defaultHomeLocation)) {
-                    Mqtt5Client mqtt5Client = MQTTConnection.getClient();
-                    mqtt5Client.toAsync().subscribeWith().topicFilter(TopicData.getJsonSensorData())/*.qos(MqttQos.AT_LEAST_ONCE)*/
-                            .callback(publish -> {
-                                String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
-                                System.out.println("Received hourly data in callback " +
-                                        publish.getTopic() + ": " +
-                                        payload);
-                                mqtt5Client.toBlocking().unsubscribeWith().topicFilter(TopicData.getJsonSensorData()).send();
+                    /* single hour from ngrok home server */
+                    if (USE_NGROK) {
+                        List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR,
+                                defaultHomeLocation,
+                                "successfully obtained hourly sensor temperature from LAN " +
+                                        "or ngrok URL.");
 
-                                List<Weather> sensorWeatherList = ParseUtils.parseWeatherJSON("["+payload+"]");
-                                if (sensorWeatherList != null) {
-                                    setAnalyticsToWeatherData(sensorWeatherList,
-                                            defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
-                                    cachingExecutor.submit(new CacheDataInDbsTask(sensorWeatherList.get(0),
-                                            weatherDaoReference,false));
-                                } else {
-                                    Log.i(TAG, "scheduled task in mqtt callback: temperature sensor data null");
-                                }
-                            }).send();
+                        if (sensorWeatherList != null) {
+                            setAnalyticsToWeatherData(sensorWeatherList,
+                                    defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
+                            cachingExecutor.submit(new CacheDataInDbsTask(null, sensorWeatherList.get(0),
+                                    weatherDaoReference, false, false));
+                        } else {
+                            Log.i(TAG, "scheduled task via ngrok: temperature sensor data returns null");
+                        }
+                    }
+
+                    /* single hour temperature sensor read from MQTT */
+                    // issue: if the last retained is hours ago, it will still be added; should be for current hour
+                    if (USE_MQTT) {
+                        String topic = TopicData.getJsonSensorHourlyDataTopic();
+                        mqtt5Client = MQTTConnection.getClient();
+                        mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
+                                .callback(publish -> {
+                                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
+                                    System.out.println("Received data in callback, topic: " + topic + ", payload: " + payload);
+                                    mqtt5Client.toBlocking().unsubscribeWith().topicFilter(topic).send();
+
+                                    List<Weather> sensorWeatherList = ParseUtils.parseWeatherJSON(payload);
+                                    if (sensorWeatherList != null) {
+                                        setAnalyticsToWeatherData(sensorWeatherList,
+                                                defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
+                                        cachingExecutor.submit(new CacheDataInDbsTask(null, sensorWeatherList.get(0),
+                                                weatherDaoReference,false, false));
+                                    } else {
+                                        Log.i(TAG, "scheduled task in mqtt callback: temperature sensor data null");
+                                    }
+                                }).send();
+                    }
+
                 }
 
             }
-        }, initialDelayHourly, 1200, TimeUnit.SECONDS);
+        }, initialDelayHourly, periodicDelayHourly, TimeUnit.SECONDS);
 
         /* set up the 12 hour weather query; may be done twice a day*/
         scheduledExecutor.scheduleAtFixedRate(new Runnable() {
@@ -438,15 +453,16 @@ public class RemoteDataFetchModel {
 
                     /* (non-blocking)  cache the weather here, erase old data of initial forecast */
                     if (initialWeatherList != null) {
-                        /* go through point(s) in the list and set initial analytics */
                         setAnalyticsToWeatherData(initialWeatherList,
                                 fetchedLocation.getLocalizedName(), UNDER_48H, TWELVE_HOURS_DATA);
-                        cachingExecutor.submit(new CacheDataInDbsTask(initialWeatherList,
+                        cachingExecutor.submit(new CacheDataInDbsTask(initialWeatherList, null,
                                 weatherDaoReference,false, false));
+                    } else {
+                        Log.i(TAG, "scheduled task via ngrok: Accuweather 12hr returns null");
                     }
                 }
             }
-        }, initialDelayTwelveHour, 3600*12, TimeUnit.SECONDS); // period 60*60*12, half day
+        }, initialDelayTwelveHour, periodicDelayTwelveHour, TimeUnit.SECONDS);
 
         /* set up the daily weather database maintenance (do one for location too?) */
         scheduledExecutor.scheduleAtFixedRate(new Runnable() {
@@ -455,7 +471,7 @@ public class RemoteDataFetchModel {
                 maintainWeatherDatabase(howLongVisible, howLongStored);
                 clearOldWeatherData(); /* maybe just do this once a week */
             }
-        }, initialDelayMaintenance, 3600, TimeUnit.SECONDS); // period 60*60*24, one day
+        }, initialDelayMaintenance, periodicDelayMaintenance, TimeUnit.SECONDS);
 
     }
 
@@ -553,7 +569,7 @@ public class RemoteDataFetchModel {
         Log.i(TAG, "maintainWeatherDatabase: maintenance should be done; cache it.");
 
         /* store the weather list back into the database by iteratively updating each data point */
-        cachingExecutor.submit(new CacheDataInDbsTask(modifiedWeatherList, weatherDaoReference,
+        cachingExecutor.submit(new CacheDataInDbsTask(modifiedWeatherList, null, weatherDaoReference,
                 false, true));
     }
 
@@ -561,18 +577,6 @@ public class RemoteDataFetchModel {
     public static void clearOldWeatherData() {
         /* (blocking) query the weather db for entire list, via caching executor */
         List<Weather> weatherList = getWeatherDataEntriesFromDb();
-//        Future<List<Weather>> getWeatherListFromDbTaskMethod = getForecastFromDbNonBlocking();
-//        try {
-//            weatherList = getWeatherListFromDbTaskMethod.get();
-//        } catch (Exception e) {
-//            Log.d(TAG, "clearOldWeatherData: exception; weather data not fetched. ");
-//            e.printStackTrace();
-//        }
-//        if (weatherList == null) {
-//            Log.d(TAG, "clearOldWeatherData: data not fetched; no deletion to be done. ");
-//            return;
-//        }
-
         boolean printWeatherInfo = false;
         Iterator iter = weatherList.iterator();
         while (iter.hasNext()) {

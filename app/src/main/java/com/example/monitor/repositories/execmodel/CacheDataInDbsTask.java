@@ -27,34 +27,29 @@ public class CacheDataInDbsTask implements Callable<String> {
     private boolean storeWeatherDataIteratively = false;
 
     /* constructors for caching of different data types */
+    /* for location */
     public CacheDataInDbsTask(MonitorLocation fetchedLocation, LocationDao locationDaoReference) {
         Log.d(TAG, "CacheDataInDbsTask: task instantiated with location");
         this.location = fetchedLocation;
         this.locationDaoReference = locationDaoReference;
     }
 
-    public CacheDataInDbsTask(List<Weather> weatherList, WeatherDao weatherDaoReference,
-                              boolean shouldClearWeatherCache, boolean storeWeatherDataIteratively) {
+    /* for weather data; if a weatherDataPoint is passed, the storing is implicitly noniterative */
+    public CacheDataInDbsTask(List<Weather> weatherList, Weather weatherDataPoint,
+                              WeatherDao weatherDaoReference, boolean shouldClearWeatherCache,
+                              boolean storeWeatherDataIteratively) {
         this.shouldClearWeatherCache = shouldClearWeatherCache;
         this.storeWeatherDataIteratively = storeWeatherDataIteratively;
         this.weatherList = weatherList;
-        this.weatherDaoReference = weatherDaoReference;
-    }
-
-    public CacheDataInDbsTask(Weather weatherDataPoint, WeatherDao weatherDaoReference,
-                              boolean shouldClearWeatherCache) {
-        this.shouldClearWeatherCache = shouldClearWeatherCache;
         this.weatherDataPoint = weatherDataPoint;
         this.weatherDaoReference = weatherDaoReference;
     }
     
-    /* ... and their corresponding caching routines */
+    /* corresponding caching routines */
     public synchronized void cacheLocationData(/*MonitorLocation locationEntry*/) {
-
         List<MonitorLocation> tempList = locationDaoReference.getLocationTableNonLive();
         location.setId(tempList.get(0).getId());
         locationDaoReference.update(location);
-
     }
 
     public synchronized void cacheWeatherDataList(List<Weather> weatherList) {
@@ -68,7 +63,6 @@ public class CacheDataInDbsTask implements Callable<String> {
         if (shouldClearWeatherCache) {
             weatherDaoReference.deleteAllWeatherPoints();
         }
-
         weatherDaoReference.insert(weatherPoint);
     }
 
