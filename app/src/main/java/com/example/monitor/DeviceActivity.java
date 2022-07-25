@@ -45,7 +45,6 @@ public class DeviceActivity extends AppCompatActivity {
     private Button navigateToSensors;
     private Button hiddenOne;
     private SeekBar seekBar;
-    private Switch toggleButton;
     private Button hiddenTwo;
 
     private Integer LEDIntensity;
@@ -54,7 +53,7 @@ public class DeviceActivity extends AppCompatActivity {
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
-        Log.d(TAG, "onSaveInstanceState: saving LEDIntensity :"+LEDIntensity);
+//        Log.d(TAG, "onSaveInstanceState: saving LEDIntensity :"+LEDIntensity);
         deviceViewModel.setLEDIntensity(LEDIntensity);
         outState.putInt(LED, LEDIntensity);
         super.onSaveInstanceState(outState);
@@ -80,11 +79,11 @@ public class DeviceActivity extends AppCompatActivity {
         super.onResume();
         if (state != null) {
             LEDIntensity = state.getInt(LED);
-            Log.d(TAG, "onResume: getting LED intensity from state: " + LEDIntensity);
+//            Log.d(TAG, "onResume: getting LED intensity from state: " + LEDIntensity);
             seekBar.setProgress(LEDIntensity);
         } else {
             LEDIntensity = deviceViewModel.getLEDIntensity();
-            Log.d(TAG, "onResume: getting LED intensity from VM variable: " + LEDIntensity);
+//            Log.d(TAG, "onResume: getting LED intensity from VM variable: " + LEDIntensity);
             seekBar.setProgress(LEDIntensity);
         }
 
@@ -113,7 +112,6 @@ public class DeviceActivity extends AppCompatActivity {
         hiddenOne = findViewById(R.id.dummyButtonForHideShow1);
         hiddenTwo = findViewById(R.id.dummyButtonForHideShow2);
         seekBar = findViewById(R.id.varyingOutputSeekBar);
-        toggleButton = findViewById(R.id.toggleDeviceOnOff);
         hideElements();
 
         /* set up dropdown list based on hardcoded parameters in ~/res/values/strings */
@@ -147,13 +145,10 @@ public class DeviceActivity extends AppCompatActivity {
                 if (selectedParameter.equals("LED Light")) {
                     seekBar.setVisibility(View.VISIBLE);
                     seekBar.setClickable(true);
-                    toggleButton.setVisibility(View.VISIBLE);
-                    toggleButton.setClickable(true);
-
-                } else if (selectedParameter.equals("Hidden 1 (dummy)")) {
+                } else if (selectedParameter.equals("Placeholder 1")) {
                     hiddenOne.setVisibility(View.VISIBLE);
                     hiddenOne.setClickable(true);
-                } else if (selectedParameter.equals("Hidden 2 (dummy)")) {
+                } else if (selectedParameter.equals("Placeholder 2")) {
                     hiddenTwo.setVisibility(View.VISIBLE);
                     hiddenTwo.setClickable(true);
                 } else {}
@@ -166,8 +161,6 @@ public class DeviceActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "hiddenOne clicked.");
-                MQTTConnection.getRetainedMsgFromTopic(TopicData.getJsonSensorData());
-
             }
         });
 
@@ -200,13 +193,6 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
-        toggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                Log.d(TAG, "toggleButton clicked, state is: "+isChecked);
-            }
-        });
-
     }
 
     public void hideElements() {
@@ -216,7 +202,6 @@ public class DeviceActivity extends AppCompatActivity {
         hiddenTwo.setClickable(false);
         seekBar.setVisibility(View.GONE);
         seekBar.setClickable(false);
-        toggleButton.setVisibility(View.GONE);
-        toggleButton.setClickable(false);
+
     }
 }

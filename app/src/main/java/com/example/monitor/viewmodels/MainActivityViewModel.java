@@ -21,7 +21,6 @@ public class MainActivityViewModel extends AndroidViewModel {
     private static final String TAG = "MainActivityViewModel";
 
     /* observable data */
-    private final MutableLiveData<Boolean> isUpdating;
     private LiveData<List<Weather>> immutableWeatherDataEntries;
     private LiveData<List<MonitorLocation>> locationData;
 
@@ -43,16 +42,11 @@ public class MainActivityViewModel extends AndroidViewModel {
         /* LiveData flow: Database -> Repository -> ViewModel -> MainActivity  */
         immutableWeatherDataEntries = weatherRepository.getWeatherDataEntries();
         locationData = weatherRepository.getLocationData();
-        isUpdating = weatherRepository.getIsUpdating();
         instantSensorReading = weatherRepository.getInstantSensorReading();
 
         /* initialize MQTT for the entire app */
         MQTTmodule = MQTTConnection.getInstance(); // no need for the reference at this point
         MQTTConnection.connectBlocking();
-    }
-
-    public LiveData<Boolean> getIsUpdating() {
-        return isUpdating;
     }
 
     public LiveData<List<Weather>> getWeatherDataEntries() {
@@ -65,8 +59,8 @@ public class MainActivityViewModel extends AndroidViewModel {
         weatherRepository.updateLocationOnPrompt();
     }
 
-    public void updateSensorReadingOnPrompt() {
-        weatherRepository.updateSensorReadingOnPrompt();
+    public void updateSensorReadingOnPrompt(String parameter) {
+        weatherRepository.updateSensorReadingOnPrompt(parameter);
     }
 
     public LiveData<String> getInstantSensorReading() { return instantSensorReading; }

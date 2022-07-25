@@ -32,9 +32,6 @@ public class WeatherRepository {
     /* for fetching remote data via managed, scheduled execution */
     private RemoteDataFetchModel remoteModel;
 
-    /* repository is aware if something is updating */
-    private MutableLiveData<Boolean> isUpdating = new MutableLiveData<>();
-
     /* package instant sensor reading into LiveData, separate from any db updates */
     private MutableLiveData<String> instantSensorReading = new MutableLiveData<>();
 
@@ -47,9 +44,7 @@ public class WeatherRepository {
         locationDao = locationDatabase.locationDao();
         weatherDataEntries = weatherDao.getAllWeatherPoints();
         locationData = locationDao.getLocationTable();
-        instantSensorReading.setValue("XXXXXXXXXXXXXXXXXXX");
-
-        isUpdating.setValue(false); /* initial value for weather list */
+        instantSensorReading.setValue("VX;TX|");
 
         /* Instantiate background execution model. Need a reference to application for GPS tasks */
         remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application,
@@ -61,20 +56,14 @@ public class WeatherRepository {
         return weatherDataEntries;
     }
 
-    /* Room should also set this up? To be used in an observer, maybe by adapter? */
     public LiveData<List<MonitorLocation>> getLocationData() {return locationData;}
-
-    /* for the buffering object in MainActivity */
-    public MutableLiveData<Boolean> getIsUpdating() {
-        return isUpdating;
-    }
 
     public void updateLocationOnPrompt() {
         remoteModel.updateLocationOnPrompt();
     }
 
-    public void updateSensorReadingOnPrompt() {
-        remoteModel.updateSensorReadingOnPrompt();
+    public void updateSensorReadingOnPrompt(String parameter) {
+        remoteModel.updateSensorReadingOnPrompt(parameter);
     }
 
     public MutableLiveData<String> getInstantSensorReading() {

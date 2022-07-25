@@ -28,7 +28,7 @@
     </string-array>
     <string-array name="monitoring_devices">
         <item>LED Light</item>
-        <item>Hidden 1 (dummy)</item>
-        <item>Hidden 2 (dummy)</item>
+        <item>Placeholder 1</item>
+        <item>Placeholder 2</item>
     </string-array>
 </resources>

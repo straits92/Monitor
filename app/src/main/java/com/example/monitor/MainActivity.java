@@ -68,16 +68,20 @@ public class MainActivity extends AppCompatActivity {
     private static final Integer TEMPERATURE = 0;
     private static final Integer HUMIDITY = 1;
 
+    private static final Integer MAXTEMP = 45;
+    private static final Integer MINTEMP = -15;
+
     /* declare app modules */
     private MainActivityViewModel weatherViewModel;
 
     /* declare display elements here */
-    private RecyclerView recyclerView;
+//    private RecyclerView recyclerView; // for debugging
     private Button homeLocation;
     private Button sensorQuery;
     private Button navigateToDevices;
     private TextView sensorQueryOutput;
     private TextView sensorQueryTimestamp;
+    private TextView sensorQueryOutputTitle;
     private LineChart weatherLineChart;
     private AutoCompleteTextView dropDownListParams;
 
@@ -95,21 +99,23 @@ public class MainActivity extends AppCompatActivity {
         dropDownListParams.setAdapter(dropDownListParametersAdapter);
 
         /* initiate display elements */
-        recyclerView = findViewById(R.id.recyclerView);
+//        recyclerView = findViewById(R.id.recyclerView);
         homeLocation = findViewById(R.id.homeLocation);
         weatherLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
         sensorQuery = findViewById(R.id.getSensorReading);
         sensorQueryOutput = findViewById(R.id.instantSensorReading);
         sensorQueryTimestamp = findViewById(R.id.sensorReadingTimestamp);
+        sensorQueryOutputTitle = findViewById(R.id.sensorReadingHeader2);
         sensorQueryOutput.setText("N/A");
         sensorQueryTimestamp.setText("N/A");
+        sensorQueryOutputTitle.setText("N/A");
         navigateToDevices = findViewById(R.id.idNavigateToDevices);
 
         /* initialize recycler view used for debugging */
-        LinearLayoutManager llm = new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(llm); /* necessary for forming the recyclerview */
-        RecyclerWeatherAdapter weatherAdapter = new RecyclerWeatherAdapter();
-        recyclerView.setAdapter(weatherAdapter);
+//        LinearLayoutManager llm = new LinearLayoutManager(this);
+//        recyclerView.setLayoutManager(llm); /* necessary for forming the recyclerview */
+//        RecyclerWeatherAdapter weatherAdapter = new RecyclerWeatherAdapter();
+//        recyclerView.setAdapter(weatherAdapter);
 
         /* permission granted slowly; everything is instantiated before the user can approve.*/
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION);
@@ -137,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
         weatherViewModel.getWeatherDataEntries().observe(this, new Observer<List<Weather>>(){
             @Override
             public void onChanged(@Nullable List<Weather> weathers) {
-                weatherAdapter.setWeatherRecyclerEntries(weathers);/* use notifyItemInserted, etc */
+//                weatherAdapter.setWeatherRecyclerEntries(weathers); // for debugging
                 redrawGraph(weathers);
             }
         });
@@ -152,7 +158,13 @@ public class MainActivity extends AppCompatActivity {
                 String localizedHomeName = tempList.get(0).getLocalizedName();
                 Log.d(TAG, "Data observed from LocationDatabase. Location: "
                         +localizedHomeName+"; location list size: "+tempList.size());
-                homeLocation.setText(localizedHomeName);
+                if(localizedHomeName.length() > 12) {
+                    String shortened = localizedHomeName;
+                    homeLocation.setText(shortened.substring(0, 10) + "...");
+                } else {
+                    homeLocation.setText(localizedHomeName);
+                }
+
                 /* use notifyItemInserted, notifyItemRemoved, notifyDataSetChanged adapter methods */
 
                 /* request the execution model to fetch relevant data from the database */
@@ -170,10 +182,23 @@ public class MainActivity extends AppCompatActivity {
             new Observer<String>(){
                 @Override
                 public void onChanged(@Nullable String s) {
-                    String valueSubstring = s.substring(1,5);
-                    String timestampSubstring = s.substring(10, 18);
-                    sensorQueryOutput.setText(valueSubstring);
-                    sensorQueryTimestamp.setText(timestampSubstring);
+                    String firstCopy = new String(s);
+                    String secondCopy = new String (s);
+                    Integer index0 = firstCopy.indexOf("V");
+                    Integer index1 = firstCopy.indexOf(";");
+                    Integer index2 = secondCopy.indexOf("T");
+                    Integer index3 = secondCopy.indexOf("|");
+
+                    if (index0 < 0) {
+                        sensorQueryOutput.setText("X");
+                        sensorQueryTimestamp.setText("X");
+                    } else {
+                        String valueSubstring =  firstCopy.substring(index0 + 1, index1);
+                        String timestampSubstring = secondCopy.substring(index2 + 1, index3);
+                        sensorQueryOutput.setText(valueSubstring);
+                        sensorQueryTimestamp.setText(timestampSubstring);
+                    }
+
                 }
         });
 
@@ -181,8 +206,9 @@ public class MainActivity extends AppCompatActivity {
         /* sets up instantaneous sensor reading */
         sensorQuery.setOnClickListener(new View.OnClickListener(){
             @Override
-            public void onClick(View v) {
-                weatherViewModel.updateSensorReadingOnPrompt();
+            public void onClick(View v) {// should have parameter as argument
+                String selectedParameter = dropDownListParams.getText().toString();
+                weatherViewModel.updateSensorReadingOnPrompt(selectedParameter);
             }
         });
 
@@ -206,6 +232,12 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 redrawGraph(weathers);
+
+                String selectedParameter = dropDownListParams.getText().toString();
+                sensorQueryOutputTitle.setText(selectedParameter);
+                sensorQueryOutput.setText("N/A");
+                sensorQueryTimestamp.setText("N/A");
+
             }
         });
 
@@ -236,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
         /* create fixed chart: x-axis is 0 to 48 hours (yesterday and today) */
         if (selectedParam == TEMPERATURE) {
             /* y axis is +40, -20 degrees C */
-            drawChartAxes(-20, 40, 12, 12);
+            drawChartAxes(MINTEMP, MAXTEMP, 12, 12);
             weatherLineChart.getDescription()
                     .setText("Temperature in Celsius (yesterday, today)");           
         } else if (selectedParam == HUMIDITY) {

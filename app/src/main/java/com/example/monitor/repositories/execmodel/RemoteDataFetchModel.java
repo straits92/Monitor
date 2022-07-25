@@ -142,7 +142,7 @@ public class RemoteDataFetchModel {
 
     /* public method for user-prompted update of instant sensor reading */
     /* (not implemented) offer an option to get instant sensor reading of humidity */
-    public static synchronized void updateSensorReadingOnPrompt() {
+    public static synchronized void updateSensorReadingOnPrompt(String parameter) {
         serviceExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -152,11 +152,11 @@ public class RemoteDataFetchModel {
                                     "temperature from LAN or ngrok URL.");
                     if (sensorWeatherList != null) {
                         String hms = sensorWeatherList.get(0).getTime().substring(11, 19);
-                        instantSensorReading.postValue("[" + sensorWeatherList.get(0).getCelsius()
-                                + "]C, [" + hms + "]");
+                        instantSensorReading.postValue("V" + sensorWeatherList.get(0).getCelsius()
+                                + ";T" + hms + "|");
                     } else {
                         Log.i(TAG, "updateSensorReadingOnPrompt: sensor data returns null");
-                        instantSensorReading.postValue("XXXXXXXXXXXXXXXXXXX");
+                        instantSensorReading.postValue("VX;TX|");
                     }
                 }
 
@@ -171,9 +171,20 @@ public class RemoteDataFetchModel {
 
                                 List<Weather> weatherList = ParseUtils.parseWeatherJSON(payload);
                                 String hms = weatherList.get(0).getTime().substring(11, 19);
+
+                                String sensorValue = "";
+                                if (parameter.equals("Temperature")){
+                                    sensorValue = weatherList.get(0).getCelsius();
+                                } else if (parameter.equals("Humidity")) {
+                                    sensorValue = weatherList.get(0).getHumidity();
+                                }else {
+                                    sensorValue = "XXX";
+                                    Log.d(TAG, "updateSensorReadingOnPrompt: No valid parameter selected.");
+                                }
+
                                 /* modify LiveData visible in MainActivity */
-                                instantSensorReading.postValue("[" + weatherList.get(0).getCelsius()
-                                        + "]C, [" + hms + "]");
+//                                instantSensorReading.postValue("[" + sensorValue + "]X, [" + hms + "]");
+                                instantSensorReading.postValue("V" + sensorValue + ";T" + hms + "|");
                             }).send();
                 }
             }

@@ -93,66 +93,51 @@
         android:background="@drawable/round_corner_display"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/idTopOptionsContainer">
+        app:layout_constraintTop_toBottomOf="@+id/idTopOptionsContainer"
+        app:layout_constraintVertical_bias="0.526">
 
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/idTemperatureLineChart1"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginStart="5dp"
-            android:layout_marginTop="80dp"
+            android:layout_marginTop="5dp"
             android:layout_marginEnd="5dp"
-            android:layout_marginBottom="110dp"
+            android:layout_marginBottom="150dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/recyclerView"
+            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.0" />
-
-        <Button
-            android:id="@+id/refreshData"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_marginTop="5dp"
-            android:layout_marginBottom="60dp"
-            android:background="@color/dark_orange"
-            android:text="@string/refreshData"
-            android:textColor="@color/white"
-            android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/idTemperatureLineChart1" />
 
         <Button
             android:id="@+id/getSensorReading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:layout_marginTop="5dp"
             android:layout_marginBottom="10dp"
             android:background="@color/dark_orange"
             android:text="@string/getSensorReading"
             android:textColor="@color/white"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/refreshData" />
+            app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
             android:id="@+id/instantSensorReading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="15dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginBottom="15dp"
             android:background="@color/white"
             android:text="@string/current_sensor_reading"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@+id/getSensorReading" />
 
-        <androidx.recyclerview.widget.RecyclerView
+        <!--        <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"
             android:layout_width="match_parent"
             android:layout_height="60dp"
@@ -163,18 +148,18 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent" />-->
 
         <TextView
             android:id="@+id/sensorReadingHeader1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="50dp"
-            android:layout_marginBottom="11dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="10dp"
             android:text="@string/sensorReadingHeader1"
             android:textStyle="bold"
             app:layout_constraintBottom_toTopOf="@+id/sensorReadingTimestamp"
-            app:layout_constraintStart_toEndOf="@+id/instantSensorReading" />
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <TextView
             android:id="@+id/sensorReadingHeader2"
@@ -191,12 +176,11 @@
             android:id="@+id/sensorReadingTimestamp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="50dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginBottom="15dp"
             android:background="@color/white"
             android:text="@string/sensorReadingTimestamp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/instantSensorReading" />
+            app:layout_constraintStart_toStartOf="@+id/sensorReadingHeader1" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
