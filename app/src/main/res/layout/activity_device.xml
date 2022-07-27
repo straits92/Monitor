@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/cream_orange"
+    android:background="@color/background_grey"
     tools:context=".DeviceActivity">
 
 
@@ -14,6 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
         android:layout_marginBottom="10dp"
+        android:backgroundTint="@color/button_blue"
         android:text="@string/navigateToSensors"
         android:textColor="@color/white"
         android:textSize="12sp"
@@ -46,6 +47,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
             android:layout_marginBottom="5dp"
+            android:textColorHint="@color/white"
             android:hint="@string/dropDownDeviceSelection"
             app:layout_constraintBaseline_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -60,7 +62,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:inputType="none"
-                android:textColor="#000000"
+                android:textColor="@color/white"
                 tools:text="some_device" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -91,6 +93,8 @@
             android:layout_width="300dp"
             android:layout_height="30dp"
             android:layout_marginTop="80dp"
+            android:thumbTint="@color/button_blue"
+            android:outlineSpotShadowColor="@color/button_blue"
             android:tooltipText="Output Intensity"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -111,6 +115,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="75dp"
+            android:backgroundTint="@color/button_blue"
+            android:textColor="@color/white"
             android:text="hidden 1"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -121,6 +127,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="75dp"
+            android:backgroundTint="@color/button_blue"
+            android:textColor="@color/white"
             android:text="hidden 2"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

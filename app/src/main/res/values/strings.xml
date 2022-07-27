@@ -12,10 +12,10 @@
     <string name="unitSelection">unit selection</string>
     <string name="dropDownTitle">Selected Parameter</string>
     <string name="getSensorReading">Sensor query</string>
-    <string name="current_sensor_reading">[sensor val]</string>
-    <string name="sensorReadingTimestamp">[time]</string>
+    <string name="current_sensor_reading">N/A</string>
+    <string name="sensorReadingTimestamp">N/A</string>
     <string name="sensorReadingHeader1">Timestamp</string>
-    <string name="sensorReadingHeader2">Temp (*C)</string>
+    <string name="sensorReadingHeader2">N/A</string>
     <string name="deviceButton">device</string>
     <string name="dropDownDeviceSelection">Selected Device</string>
     <string name="navigateToSensors">go to sensors</string>

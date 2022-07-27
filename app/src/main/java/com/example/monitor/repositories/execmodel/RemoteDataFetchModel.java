@@ -7,6 +7,7 @@ import android.util.Log;
 import androidx.annotation.RequiresApi;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.monitor.MonitorEnums;
 import com.example.monitor.backgroundutil.ExecutorHelper;
 import com.example.monitor.databases.LocationDao;
 import com.example.monitor.databases.WeatherDao;
@@ -16,9 +17,7 @@ import com.example.monitor.repositories.networkutils.MQTTConnection;
 import com.example.monitor.repositories.networkutils.NetworkUtils;
 import com.example.monitor.repositories.networkutils.TopicData;
 import com.example.monitor.repositories.parseutils.ParseUtils;
-import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5Client;
-import com.hivemq.client.mqtt.mqtt5.message.subscribe.suback.Mqtt5SubAck;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -28,9 +27,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.TimeZone;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -49,16 +46,6 @@ public class RemoteDataFetchModel {
     private static final String TAG = "RemoteDataFetchModel";
     private static boolean USE_MQTT = true;
     private static boolean USE_NGROK = false;
-
-    /* enumerated constants */
-    private static final Integer TEMPERATURE_SENSOR_INSTANT = 3;
-    private static final Integer TEMPERATURE_SENSOR = 2;
-    private static final Integer SINGLE_HOUR_DATA = 1;
-    private static final Integer TWELVE_HOURS_DATA = 0;
-
-    private static final Integer UNDER_48H = 0;
-    private static final Integer BETWEEN_48H_AND_WEEK = 1;
-    private static final Integer MORE_THAN_A_WEEK = 2;
 
     /* package instant sensor reading into LiveData, separate from any db updates */
     private static MutableLiveData<String> instantSensorReading;
@@ -147,7 +134,7 @@ public class RemoteDataFetchModel {
             @Override
             public void run() {
                 if (USE_NGROK) {
-                    List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR_INSTANT,
+                    List<Weather> sensorWeatherList = getForecastFromNetwork(MonitorEnums.HOME_SENSOR_INSTANT,
                             defaultHomeLocation, "successfully obtained instant sensor " +
                                     "temperature from LAN or ngrok URL.");
                     if (sensorWeatherList != null) {
@@ -174,11 +161,11 @@ public class RemoteDataFetchModel {
 
                                 String sensorValue = "";
                                 if (parameter.equals("Temperature")){
-                                    sensorValue = weatherList.get(0).getCelsius();
+                                    sensorValue = weatherList.get(0).getCelsius() + " C";
                                 } else if (parameter.equals("Humidity")) {
-                                    sensorValue = weatherList.get(0).getHumidity();
+                                    sensorValue = weatherList.get(0).getHumidity()+ " %";
                                 }else {
-                                    sensorValue = "XXX";
+                                    sensorValue = "N/A";
                                     Log.d(TAG, "updateSensorReadingOnPrompt: No valid parameter selected.");
                                 }
 
@@ -300,7 +287,7 @@ public class RemoteDataFetchModel {
                         + weatherTimeInMillis + "] > current time [" + currentDateMillis
                         + "]; remain visible.");
                 }
-            return UNDER_48H;
+            return MonitorEnums.UNDER_48H;
         }
 
         if ( (currentDateMillis - weatherTimeInMillis) >= (howLongStored*1000)) {
@@ -310,7 +297,7 @@ public class RemoteDataFetchModel {
                         "howLongStored ["+ howLongStored + "]*1000, " +
                         "(should be over a week), don't store.");
                 }
-            return MORE_THAN_A_WEEK;
+            return MonitorEnums.MORE_THAN_A_WEEK;
         }
 
         if ( (currentDateMillis - weatherTimeInMillis) >= (howLongVisible*1000)) {
@@ -319,14 +306,14 @@ public class RemoteDataFetchModel {
                         "than current time ["+ currentDateMillis + "] by more than howLongVisible "
                         + howLongVisible+ "*1000, (should be 48H), not visible, but still stored.");
                 }
-            return BETWEEN_48H_AND_WEEK;
+            return MonitorEnums.BETWEEN_48H_AND_WEEK;
         }
 
         if (printTimeData) {
             Log.d(TAG, "updateDataAge: this point is in the last 48h; remain visible.");
         }
 
-        return UNDER_48H;
+        return MonitorEnums.UNDER_48H;
     }
 
     /* interprets time in format used by Accuweather API */
@@ -367,6 +354,8 @@ public class RemoteDataFetchModel {
                 Log.d(TAG, "run: scheduled Runnable executing hourly weather query. ");
                 MonitorLocation fetchedLocation = defaultHomeLocation;
 
+                long startOfHour = getCurrentMillis();
+
                 /* (blocking) query the location db for relevant location */
                 Future<MonitorLocation> getLocationFromDbTaskMethod = getLocationFromDbNonBlocking();
                 try {
@@ -379,13 +368,14 @@ public class RemoteDataFetchModel {
 
                 /* candidate for general wrapper method; similar code used in other runnables */
                 /* single hour from Accuweather API */
-                if (dataNeedsFetching(SINGLE_HOUR_DATA, fetchedLocation)) {
-                    List<Weather> hourlyWeatherList = getForecastFromNetwork(SINGLE_HOUR_DATA,
+                if (dataNeedsFetching(MonitorEnums.SINGLE_HOUR_DATA, fetchedLocation, startOfHour)) {
+                    List<Weather> hourlyWeatherList = getForecastFromNetwork(MonitorEnums.SINGLE_HOUR_DATA,
                             fetchedLocation, "successfully fetched single hr forecast.");
 
                     if (hourlyWeatherList != null) {
                         setAnalyticsToWeatherData(hourlyWeatherList, fetchedLocation.getLocalizedName(),
-                                UNDER_48H, SINGLE_HOUR_DATA);
+                                MonitorEnums.UNDER_48H, MonitorEnums.SINGLE_HOUR_DATA);
+                        /* check if fetched data matches here */
                         cachingExecutor.submit(new CacheDataInDbsTask(null, hourlyWeatherList.get(0),
                                 weatherDaoReference,false, false));
                     } else {
@@ -393,17 +383,18 @@ public class RemoteDataFetchModel {
                     }
                 }
 
-                if (dataNeedsFetching(TEMPERATURE_SENSOR, defaultHomeLocation)) {
+                if (dataNeedsFetching(MonitorEnums.HOME_SENSOR, defaultHomeLocation, startOfHour)) {
                     /* single hour from ngrok home server */
                     if (USE_NGROK) {
-                        List<Weather> sensorWeatherList = getForecastFromNetwork(TEMPERATURE_SENSOR,
+                        List<Weather> sensorWeatherList = getForecastFromNetwork(MonitorEnums.HOME_SENSOR,
                                 defaultHomeLocation,
                                 "successfully obtained hourly sensor temperature from LAN " +
                                         "or ngrok URL.");
 
                         if (sensorWeatherList != null) {
                             setAnalyticsToWeatherData(sensorWeatherList,
-                                    defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
+                                    defaultHomeLocation.getLocalizedName(), MonitorEnums.UNDER_48H, MonitorEnums.HOME_SENSOR);
+                            /* check if fetched data matches here */
                             cachingExecutor.submit(new CacheDataInDbsTask(null, sensorWeatherList.get(0),
                                     weatherDaoReference, false, false));
                         } else {
@@ -425,9 +416,12 @@ public class RemoteDataFetchModel {
                                     List<Weather> sensorWeatherList = ParseUtils.parseWeatherJSON(payload);
                                     if (sensorWeatherList != null) {
                                         setAnalyticsToWeatherData(sensorWeatherList,
-                                                defaultHomeLocation.getLocalizedName(), UNDER_48H, TEMPERATURE_SENSOR);
-                                        cachingExecutor.submit(new CacheDataInDbsTask(null, sensorWeatherList.get(0),
-                                                weatherDaoReference,false, false));
+                                                defaultHomeLocation.getLocalizedName(), MonitorEnums.UNDER_48H, MonitorEnums.HOME_SENSOR);
+                                        if (fetchedDataMatches(sensorWeatherList, startOfHour)){
+                                            Log.d(TAG, "fetched data matches, cache it. ");
+                                            cachingExecutor.submit(new CacheDataInDbsTask(null, sensorWeatherList.get(0),
+                                                    weatherDaoReference,false, false));
+                                        }
                                     } else {
                                         Log.i(TAG, "scheduled task in mqtt callback: temperature sensor data null");
                                     }
@@ -446,6 +440,8 @@ public class RemoteDataFetchModel {
                 Log.d(TAG, "run: scheduled Runnable executing hourly weather query. ");
                 MonitorLocation fetchedLocation = defaultHomeLocation;
 
+                long startOfHour = getCurrentMillis();
+
                 /* (blocking) query the location db for relevant location */
                 Future<MonitorLocation> getLocationFromDbTaskMethod = getLocationFromDbNonBlocking();
                 try {
@@ -457,15 +453,14 @@ public class RemoteDataFetchModel {
                 }
 
                 /* weather operations done only if weather not fetched for this period */
-                if (dataNeedsFetching(TWELVE_HOURS_DATA, fetchedLocation)) {
-                    /* (blocking) get initial forecast (type 12h) based on initial location */
-                    List<Weather> initialWeatherList = getForecastFromNetwork(TWELVE_HOURS_DATA,
+                if (dataNeedsFetching(MonitorEnums.TWELVE_HOURS_DATA, fetchedLocation, startOfHour)) {
+                    List<Weather> initialWeatherList = getForecastFromNetwork(MonitorEnums.TWELVE_HOURS_DATA,
                             fetchedLocation, "successfully obtained 12 hour forecast.");
 
-                    /* (non-blocking)  cache the weather here, erase old data of initial forecast */
                     if (initialWeatherList != null) {
                         setAnalyticsToWeatherData(initialWeatherList,
-                                fetchedLocation.getLocalizedName(), UNDER_48H, TWELVE_HOURS_DATA);
+                                fetchedLocation.getLocalizedName(), MonitorEnums.UNDER_48H,MonitorEnums.TWELVE_HOURS_DATA);
+                        /* check if fetched data matches here */
                         cachingExecutor.submit(new CacheDataInDbsTask(initialWeatherList, null,
                                 weatherDaoReference,false, false));
                     } else {
@@ -484,6 +479,12 @@ public class RemoteDataFetchModel {
             }
         }, initialDelayMaintenance, periodicDelayMaintenance, TimeUnit.SECONDS);
 
+    }
+
+    /*  for 12-hr API fetch, will need to check first hour.
+     * for 1-hr API fetch, check the hour against the "startOfNextHour" */
+    private static boolean fetchedDataMatches(List<Weather> sensorWeatherList, long startOfHour) {
+        return (sensorWeatherList.get(0).getTimeInMillis() == startOfHour);
     }
 
     public static Future<MonitorLocation> getLocationFromDbNonBlocking() {
@@ -550,7 +551,7 @@ public class RemoteDataFetchModel {
          * category, and mark old data for deletion if older than howLongStored */
         boolean printWeatherInfo = false;
         List<Weather> modifiedWeatherList = new ArrayList<>();
-        Integer ageCategory = UNDER_48H;
+        Integer ageCategory = MonitorEnums.UNDER_48H;
         long weatherTimeInMillis;
         Date currentDate = new Date(System.currentTimeMillis());
         long currentDateMillis = currentDate.getTime();
@@ -601,26 +602,20 @@ public class RemoteDataFetchModel {
                         + "\nPersistence: " + weatherEntryInIter.getPersistence());
             }
 
-            if (weatherEntryInIter.getPersistence() == MORE_THAN_A_WEEK) {
+            if (weatherEntryInIter.getPersistence() == MonitorEnums.MORE_THAN_A_WEEK) {
                 weatherDaoReference.delete(weatherEntryInIter);
             }
         }
     }
 
     /* checks if forecast of a type, for the time period, in a location, are in the db */
-    private static boolean dataNeedsFetching(Integer dataCategory, MonitorLocation location) {
+    private static boolean dataNeedsFetching(Integer dataCategory, MonitorLocation location, long startOfHour) {
         Log.d(TAG, "dataNeedsFetching: check if dataCategory: "
-                +dataCategory+"; needs fetching. 1: hourly, 0: twelve hours.");
+                +dataCategory+"; needs fetching. 2: sensor, 1: hourly, 0: twelve hours.");
         List<Weather> weatherList = null;
 
-        /* get start of current hour */
-        Calendar today = Calendar.getInstance(); // .getInstance(TimeZone.getTimeZone("Belgrade"));
-        today.set(Calendar.MILLISECOND, 0);
-        today.set(Calendar.SECOND, 0);
-        today.set(Calendar.MINUTE, 0);
-        long startOfHour = today.getTimeInMillis(); // add 1hr for +01:00 ?
+        /* get start of next hour */
         long startOfHourNext = startOfHour + 3600000;
-        Log.d(TAG, "dataNeedsFetching: current hour millis: "+startOfHour);
 
         Future<List<Weather>> checkDataTask = getForecastFromDbNonBlocking();
         try {
@@ -636,30 +631,26 @@ public class RemoteDataFetchModel {
             Weather weatherEntryInIter = (Weather) iter.next();
 
             /* for API forecasts, the next hour is checked */
-            if (dataCategory == SINGLE_HOUR_DATA || dataCategory == TWELVE_HOURS_DATA) {
+            if (dataCategory == MonitorEnums.SINGLE_HOUR_DATA || dataCategory == MonitorEnums.TWELVE_HOURS_DATA) {
                 if ((weatherEntryInIter.getCategory() == dataCategory)
                         && (weatherEntryInIter.getTimeInMillis() == startOfHourNext)
                         && (weatherEntryInIter.getLocation().equals(locationName))) {
-                    Log.d(TAG, "dataNeedsFetching for this hour: NO, weather data type(API " +
-                            "forecast):" + dataCategory + "location:|" + locationName
-                            + "| is already present in db");
+                    Log.d(TAG, "dataNeedsFetching for this hour: NO");
                     return false;
                 }
 
                 /* for the sensor, the current hour is checked */
-            } else if (dataCategory == TEMPERATURE_SENSOR) {
+            } else if (dataCategory == MonitorEnums.HOME_SENSOR) {
                 if ((weatherEntryInIter.getCategory() == dataCategory)
                         && (weatherEntryInIter.getTimeInMillis() == startOfHour)
                         && (weatherEntryInIter.getLocation().equals(locationName))) {
-                    Log.d(TAG, "dataNeedsFetching for this hour: NO, weather data type (sensor):"
-                            + dataCategory + "location:|" + locationName + "| is present in db");
+                    Log.d(TAG, "dataNeedsFetching for this hour: NO");
                     return false;
                 }
             } else {} /* other potential options */
 
         }
-        Log.d(TAG, "dataNeedsFetching for this hour: YES, weather data type:"
-                +dataCategory+"location:"+locationName+ " not present in db");
+        Log.d(TAG, "dataNeedsFetching for this hour: YES, for location:"+locationName);
         return true;
     }
 
@@ -702,5 +693,14 @@ public class RemoteDataFetchModel {
             Log.d(TAG, "getWeatherDataEntriesFromDb: data returns null ");
         }
         return weatherList;
+    }
+
+    private static long getCurrentMillis() {
+        Calendar today = Calendar.getInstance(); // .getInstance(TimeZone.getTimeZone("Belgrade"));
+        today.set(Calendar.MILLISECOND, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MINUTE, 0);
+        long startOfHour = today.getTimeInMillis(); // add 1hr for +01:00 ?
+        return startOfHour;
     }
 }

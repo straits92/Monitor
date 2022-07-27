@@ -51,7 +51,8 @@ public class ParseUtils {
 
                     String humidityVal = singleEntry.getString("RelativeHumidity");
                     weather.setHumidity(humidityVal);
-                    /* further weather info can be extracted from object, like indoor relhumidity */
+
+                    /* further weather info can be extracted from object, like brightness */
 
                     weatherArrayList.add(weather);
                 }
