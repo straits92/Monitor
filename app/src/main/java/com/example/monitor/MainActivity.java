@@ -22,6 +22,9 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.RadioGroup;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.example.monitor.models.MonitorLocation;
@@ -48,13 +51,6 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
-    /* enumerated constants for data type */
-    private static final Integer TEMPERATURE = 0;
-    private static final Integer HUMIDITY = 1;
-
-    private static final Integer MAXTEMP = 45;
-    private static final Integer MINTEMP = -15;
-
     /* declare app modules */
     private MainActivityViewModel weatherViewModel;
 
@@ -63,12 +59,14 @@ public class MainActivity extends AppCompatActivity {
     private Button homeLocation;
     private Button sensorQuery;
     private Button navigateToDevices;
+    private Switch weather12hrSwitch;
+    private Switch weather1hrSwitch;
+    private Switch sensor1hrSwitch;
     private TextView sensorQueryOutput;
     private TextView sensorQueryTimestamp;
     private TextView sensorQueryOutputTitle;
     private LineChart weatherLineChart;
     private AutoCompleteTextView dropDownListParams;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,10 +87,11 @@ public class MainActivity extends AppCompatActivity {
         sensorQueryOutput = findViewById(R.id.instantSensorReading);
         sensorQueryTimestamp = findViewById(R.id.sensorReadingTimestamp);
         sensorQueryOutputTitle = findViewById(R.id.sensorReadingHeader2);
-        sensorQueryOutput.setText("N/A");
-        sensorQueryTimestamp.setText("N/A");
-        sensorQueryOutputTitle.setText("N/A");
         navigateToDevices = findViewById(R.id.idNavigateToDevices);
+        weather12hrSwitch = findViewById(R.id.switch1);
+        weather1hrSwitch = findViewById(R.id.switch2);
+        sensor1hrSwitch = findViewById(R.id.switch3);
+
 
         /* initialize recycler view used for debugging */
 //        recyclerView = findViewById(R.id.recyclerView);
@@ -110,16 +109,6 @@ public class MainActivity extends AppCompatActivity {
 
         /* test publish and test subscription for mqtt from this activity  */
         MQTTConnection.publishBlocking(TAG+"_MonitorApp_test", TopicData.getGeneralTopic());
-
-        /* switch to device control panels, without creating the activity+viewmodel anew */
-        navigateToDevices.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent openDeviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
-                openDeviceActivity.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivityIfNeeded(openDeviceActivity, 0);
-            }
-        });
 
         /*** LiveData observers ***/
         /* observe() is a LiveData callback to weather data. When the data changes, redraw. */
@@ -148,8 +137,6 @@ public class MainActivity extends AppCompatActivity {
                     homeLocation.setText(localizedHomeName);
                 }
 
-                /* use notifyItemInserted, notifyItemRemoved, notifyDataSetChanged adapter methods */
-
                 /* request the execution model to fetch relevant data from the database */
                 List<Weather> weathers = weatherViewModel.getWeatherDataEntriesFromDb();
                 if (weathers == null) {
@@ -173,8 +160,8 @@ public class MainActivity extends AppCompatActivity {
                     Integer index3 = secondCopy.indexOf("|");
 
                     if (index0 < 0) {
-                        sensorQueryOutput.setText("X");
-                        sensorQueryTimestamp.setText("X");
+                        sensorQueryOutput.setText("N/A");
+                        sensorQueryTimestamp.setText("N/A");
                     } else {
                         String valueSubstring =  firstCopy.substring(index0 + 1, index1);
                         String timestampSubstring = secondCopy.substring(index2 + 1, index3);
@@ -186,6 +173,16 @@ public class MainActivity extends AppCompatActivity {
         });
 
         /*** onClick listeners ***/
+        /* switch to device control panels, without creating the activity+viewmodel anew */
+        navigateToDevices.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent openDeviceActivity = new Intent(MainActivity.this, DeviceActivity.class);
+                openDeviceActivity.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivityIfNeeded(openDeviceActivity, 0);
+            }
+        });
+
         /* sets up instantaneous sensor reading */
         sensorQuery.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -216,14 +213,35 @@ public class MainActivity extends AppCompatActivity {
                 }
                 redrawGraph(weathers);
 
+                /* change instantaneous sensor query display */
                 String selectedParameter = dropDownListParams.getText().toString();
                 sensorQueryOutputTitle.setText(selectedParameter);
                 sensorQueryOutput.setText("N/A");
                 sensorQueryTimestamp.setText("N/A");
-
             }
         });
 
+        weather12hrSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    List<Weather> weathers = weatherViewModel.getWeatherDataEntriesFromDb();
+                    redrawGraph(weathers);
+            }
+        });
+        weather1hrSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                List<Weather> weathers = weatherViewModel.getWeatherDataEntriesFromDb();
+                redrawGraph(weathers);
+            }
+        });
+        sensor1hrSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                List<Weather> weathers = weatherViewModel.getWeatherDataEntriesFromDb();
+                redrawGraph(weathers);
+            }
+        });
     }
 
     /*** graphing utilities ***/
@@ -233,10 +251,10 @@ public class MainActivity extends AppCompatActivity {
         long dailyTimeOrigin = getStartOfTimeUnitMillis("day");
 
         if (selectedParameter.equals("Temperature")) {
-            selectedParam = TEMPERATURE;
+            selectedParam = MonitorEnums.TEMPERATURE;
         } else if (selectedParameter.equals("Humidity")) {
-            selectedParam = HUMIDITY;
-        } else { // unhandled selection
+            selectedParam = MonitorEnums.HUMIDITY;
+        } else { // unhandled selection, brightness comes here later
         }
 
         /* draw the obtained data on the display */
@@ -247,10 +265,10 @@ public class MainActivity extends AppCompatActivity {
     private void bindDataToGraph(long dailyTimeOrigin, List<Weather> weathers, Integer selectedParam) {
         /* create fixed chart: x-axis is 0 to 48 hours (yesterday and today) */
         String graphText = "None selected";
-        if (selectedParam == TEMPERATURE) {
-            drawChartAxes(MINTEMP, MAXTEMP, 12, 12);
+        if (selectedParam == MonitorEnums.TEMPERATURE) {
+            drawChartAxes(MonitorEnums.MINTEMP, MonitorEnums.MAXTEMP, 12, 12);
             graphText = "Temperature in Celsius (yesterday, today)";
-        } else if (selectedParam == HUMIDITY) {
+        } else if (selectedParam == MonitorEnums.HUMIDITY) {
             drawChartAxes(0, 100, 12, 12);
             graphText = "Humidity in % (yesterday, today)";
         } else {
@@ -265,7 +283,6 @@ public class MainActivity extends AppCompatActivity {
         List<Entry> twelveHourWeatherList = new ArrayList<>();
         List<Entry> hourlyWeatherList = new ArrayList<>();
         List<Entry> sensorWeatherList = new ArrayList<>();
-        /*temperatureViewModel.getSensorWeatherList()*/
 
         separateWeatherDataTrendsFixed(dailyTimeOrigin, weathers, twelveHourWeatherList,
                 hourlyWeatherList, sensorWeatherList, selectedParam);
@@ -277,20 +294,20 @@ public class MainActivity extends AppCompatActivity {
 
         /* bind the data to the temperatureLineChart */
         ArrayList<ILineDataSet> lineDataSets = new ArrayList<>();
-        LineDataSet twelveHourTemperatureSet = new LineDataSet(twelveHourWeatherList,
+        LineDataSet twelveHourDataSet = new LineDataSet(twelveHourWeatherList,
                 "Weather API (12hr)");
-        LineDataSet hourlyTemperatureSet = new LineDataSet(hourlyWeatherList,
+        LineDataSet oneHourDataSet = new LineDataSet(hourlyWeatherList,
                 "Weather API (1hr)");
-        LineDataSet sensorTemperatureSet = new LineDataSet(sensorWeatherList,
+        LineDataSet oneHourSensorDataSet = new LineDataSet(sensorWeatherList,
                 "Sensor (1hr)");
 
-        twelveHourTemperatureSet.setDrawCircles(true);twelveHourTemperatureSet.setColor(Color.RED);
-        hourlyTemperatureSet.setDrawCircles(true); hourlyTemperatureSet.setColor(Color.GREEN);
-        sensorTemperatureSet.setDrawCircles(true); sensorTemperatureSet.setColor(Color.YELLOW);
+        twelveHourDataSet.setDrawCircles(true);twelveHourDataSet.setColor(Color.RED);
+        oneHourDataSet.setDrawCircles(true); oneHourDataSet.setColor(Color.GREEN);
+        oneHourSensorDataSet.setDrawCircles(true); oneHourSensorDataSet.setColor(Color.YELLOW);
 
-        lineDataSets.add(twelveHourTemperatureSet);
-        lineDataSets.add(hourlyTemperatureSet);
-        lineDataSets.add(sensorTemperatureSet);
+        if (weather12hrSwitch.isChecked()) {lineDataSets.add(twelveHourDataSet);}
+        if (weather1hrSwitch.isChecked()) {lineDataSets.add(oneHourDataSet);}
+        if (sensor1hrSwitch.isChecked()) {lineDataSets.add(oneHourSensorDataSet);}
 
         weatherLineChart.setData(new LineData(lineDataSets));
         weatherLineChart.getLegend().setTextColor(Color.WHITE);
@@ -317,23 +334,20 @@ public class MainActivity extends AppCompatActivity {
                 continue;
             }
 
-            /* get hours offset from start of yesterday, get temperature */
+            /* get hours offset from start of yesterday; recalculated whenever drawn */
             long dataPointTime = weatherEntryInIter.getTimeInMillis();
             long hour = (dataPointTime - startOfYesterday)/3600000; // 0 to 48
 
             float parameter;
-            if (selectedParam == TEMPERATURE) {
+            if (selectedParam == MonitorEnums.TEMPERATURE) {
                 parameter = Float.parseFloat(weatherEntryInIter.getCelsius());
-            } else if (selectedParam == HUMIDITY) {
+            } else if (selectedParam == MonitorEnums.HUMIDITY) {
                 parameter = Float.parseFloat(weatherEntryInIter.getHumidity());
             } else {
                 parameter = 0.01f;
             }
+
             Entry dataPoint = new Entry(hour, parameter);
-
-            /* recalculate whenever drawn, the reference timestamp should be start of today */
-//            convertedDataMillis = dataPointMillis - dailyTimeOrigin;
-
             Integer category = weatherEntryInIter.getCategory();
             if (category == MonitorEnums.SINGLE_HOUR_DATA) {
                 hourlyWeatherList.add(dataPoint);
@@ -364,11 +378,8 @@ public class MainActivity extends AppCompatActivity {
         XAxis xAxis = weatherLineChart.getXAxis();
         xAxis.setAxisMaximum(48);
         xAxis.setAxisMinimum(0);
-//        xAxis.setGranularityEnabled(true);
-//        xAxis.setGranularity(48/4); /* or xAxis.setLabelCount(n) instead*/
-        xAxis.setLabelCount(xLabelCount);
-        // getResources().getColor(R.color.yellowish_orange);
-        xAxis.setTextColor(Color.WHITE);
+        xAxis.setLabelCount(xLabelCount); // or enable granularity, and xAxis.setGranularity(48/4);
+        xAxis.setTextColor(Color.WHITE); // getResources().getColor(R.color.yellowish_orange);
 
         YAxis yAxisLeft = weatherLineChart.getAxisLeft();
         yAxisLeft.setAxisMaximum(yAxisMax);
@@ -389,11 +400,12 @@ public class MainActivity extends AppCompatActivity {
         long currentHour = (currentTime - startOfYesterday)/3600000;
 
         xAxis.removeAllLimitLines();
-        LimitLine ll = new LimitLine(currentHour, "now");
+        LimitLine ll = new LimitLine(currentHour, "T: "+(currentHour%24)+"h");
         ll.setLineColor(Color.RED);
         ll.setLineWidth(2f);
         ll.setTextColor(Color.WHITE);
         ll.setTextSize(12f);
+        ll.setLabelPosition(LimitLine.LimitLabelPosition.LEFT_TOP); // or change when close to xmax
         xAxis.addLimitLine(ll);
     }
 

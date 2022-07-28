@@ -44,8 +44,6 @@ import java.util.concurrent.TimeoutException;
 * */
 public class RemoteDataFetchModel {
     private static final String TAG = "RemoteDataFetchModel";
-    private static boolean USE_MQTT = true;
-    private static boolean USE_NGROK = false;
 
     /* package instant sensor reading into LiveData, separate from any db updates */
     private static MutableLiveData<String> instantSensorReading;
@@ -133,7 +131,7 @@ public class RemoteDataFetchModel {
         serviceExecutor.submit(new Runnable() {
             @Override
             public void run() {
-                if (USE_NGROK) {
+                if (MonitorEnums.USE_NGROK) {
                     List<Weather> sensorWeatherList = getForecastFromNetwork(MonitorEnums.HOME_SENSOR_INSTANT,
                             defaultHomeLocation, "successfully obtained instant sensor " +
                                     "temperature from LAN or ngrok URL.");
@@ -147,7 +145,7 @@ public class RemoteDataFetchModel {
                     }
                 }
 
-                if (USE_MQTT) {
+                if (MonitorEnums.USE_MQTT) {
                     String topic = TopicData.getJsonSensorInstantDataTopic();
                     mqtt5Client = MQTTConnection.getClient();
                     mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
@@ -385,7 +383,7 @@ public class RemoteDataFetchModel {
 
                 if (dataNeedsFetching(MonitorEnums.HOME_SENSOR, defaultHomeLocation, startOfHour)) {
                     /* single hour from ngrok home server */
-                    if (USE_NGROK) {
+                    if (MonitorEnums.USE_NGROK) {
                         List<Weather> sensorWeatherList = getForecastFromNetwork(MonitorEnums.HOME_SENSOR,
                                 defaultHomeLocation,
                                 "successfully obtained hourly sensor temperature from LAN " +
@@ -404,7 +402,7 @@ public class RemoteDataFetchModel {
 
                     /* single hour temperature sensor read from MQTT */
                     // issue: if the last retained is hours ago, it will still be added; should be for current hour
-                    if (USE_MQTT) {
+                    if (MonitorEnums.USE_MQTT) {
                         String topic = TopicData.getJsonSensorHourlyDataTopic();
                         mqtt5Client = MQTTConnection.getClient();
                         mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/

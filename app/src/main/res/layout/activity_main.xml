@@ -103,7 +103,7 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/idTopOptionsContainer"
-        app:layout_constraintVertical_bias="0.526">
+        app:layout_constraintVertical_bias="0.515">
 
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/idTemperatureLineChart1"
@@ -112,7 +112,7 @@
             android:layout_marginStart="5dp"
             android:layout_marginTop="5dp"
             android:layout_marginEnd="5dp"
-            android:layout_marginBottom="150dp"
+            android:layout_marginBottom="170dp"
             android:backgroundTint="@color/background_grey"
             android:foregroundTint="@color/background_grey"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -126,8 +126,8 @@
             android:id="@+id/getSensorReading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginBottom="5dp"
             android:backgroundTint="@color/button_blue"
             android:text="@string/getSensorReading"
             android:textColor="@color/white"
@@ -140,7 +140,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="15dp"
-            android:layout_marginBottom="15dp"
+            android:layout_marginBottom="5dp"
             android:background="@color/background_grey"
             android:text="@string/current_sensor_reading"
             android:textColor="@color/yellowish_orange"
@@ -166,8 +166,8 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="20dp"
             android:layout_marginBottom="10dp"
-            android:textColor="@color/white"
             android:text="@string/sensorReadingHeader1"
+            android:textColor="@color/white"
             android:textStyle="bold"
             app:layout_constraintBottom_toTopOf="@+id/sensorReadingTimestamp"
             app:layout_constraintEnd_toEndOf="parent" />
@@ -177,9 +177,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="15dp"
-            android:layout_marginBottom="10dp"
-            android:textColor="@color/white"
+            android:layout_marginBottom="5dp"
             android:text="@string/sensorReadingHeader2"
+            android:textColor="@color/white"
             android:textStyle="bold"
             app:layout_constraintBottom_toTopOf="@+id/instantSensorReading"
             app:layout_constraintStart_toEndOf="@+id/getSensorReading" />
@@ -188,12 +188,45 @@
             android:id="@+id/sensorReadingTimestamp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="15dp"
+            android:layout_marginBottom="5dp"
             android:background="@color/background_grey"
             android:text="@string/sensorReadingTimestamp"
             android:textColor="@color/yellowish_orange"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="@+id/sensorReadingHeader1" />
+
+        <Switch
+            android:id="@+id/switch1"
+            android:layout_width="170dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="5dp"
+            android:text="@string/switch1"
+            android:textColor="@color/white"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/idTemperatureLineChart1" />
+
+        <Switch
+            android:id="@+id/switch2"
+            android:layout_width="170dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:layout_marginTop="5dp"
+            android:text="@string/switch2"
+            android:textColor="@color/white"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/switch1" />
+
+        <Switch
+            android:id="@+id/switch3"
+            android:layout_width="170dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:layout_marginTop="5dp"
+            android:text="@string/switch3"
+            android:textColor="@color/white"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/switch2" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
