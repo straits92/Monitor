@@ -20,11 +20,12 @@
     <string name="dropDownDeviceSelection">Selected Device</string>
     <string name="navigateToSensors">go to sensors</string>
     <string name="navigateToDevices">go to devices</string>
-    <string name="outputSeekBarTitle">Output Value</string>
+    <string name="outputSeekBarTitle">Light intensity</string>
     <string name="switchTitle">Toggle on/off</string>
     <string name="switch1">Weather API (12hr)</string>
     <string name="switch2">Weather API (1hr)</string>
     <string name="switch3">Sensor (1hr)</string>
+    <string name="LED_LDR_switch">LDR sensor dependence</string>
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>

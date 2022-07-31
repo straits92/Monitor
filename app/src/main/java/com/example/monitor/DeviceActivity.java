@@ -46,6 +46,7 @@ public class DeviceActivity extends AppCompatActivity {
     private Button hiddenOne;
     private SeekBar seekBar;
     private Button hiddenTwo;
+    private Switch ledLdrSwitch;
 
     private Integer LEDIntensity;
     static final String LED = "LEDIntensity";
@@ -86,11 +87,10 @@ public class DeviceActivity extends AppCompatActivity {
 //            Log.d(TAG, "onResume: getting LED intensity from VM variable: " + LEDIntensity);
             seekBar.setProgress(LEDIntensity);
         }
-
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) { //must the state be passed to the activity?
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
 
@@ -112,12 +112,13 @@ public class DeviceActivity extends AppCompatActivity {
         hiddenOne = findViewById(R.id.dummyButtonForHideShow1);
         hiddenTwo = findViewById(R.id.dummyButtonForHideShow2);
         seekBar = findViewById(R.id.varyingOutputSeekBar);
+        ledLdrSwitch = findViewById(R.id.LED_LDR_switch);
         hideElements();
 
-        /* set up dropdown list based on hardcoded parameters in ~/res/values/strings */
+        /* set up dropdown list based on hardcoded parameters */
         String[] monitorDevices = getResources().getStringArray(R.array.monitoring_devices);
         ArrayAdapter dropDownListDevicesAdapter = new ArrayAdapter(this,
-                R.layout.dropdown_item_monitoring_parameter, monitorDevices); // xml for parameters reused here? or does it need its own?
+                R.layout.dropdown_item_monitoring_parameter, monitorDevices);
         dropDownListDevices = findViewById(R.id.dropDownDevicesText);
         dropDownListDevices.setAdapter(dropDownListDevicesAdapter);
 
@@ -133,7 +134,6 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
-
         /* sets up the listener for changes to the drop down selection */
         dropDownListDevices.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -145,6 +145,8 @@ public class DeviceActivity extends AppCompatActivity {
                 if (selectedParameter.equals("LED Light")) {
                     seekBar.setVisibility(View.VISIBLE);
                     seekBar.setClickable(true);
+                    ledLdrSwitch.setVisibility(View.VISIBLE);
+                    ledLdrSwitch.setClickable(true);
                 } else if (selectedParameter.equals("Placeholder 1")) {
                     hiddenOne.setVisibility(View.VISIBLE);
                     hiddenOne.setClickable(true);
@@ -172,6 +174,23 @@ public class DeviceActivity extends AppCompatActivity {
         });
         /* ... */
 
+        ledLdrSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    // first turn off the device
+                    MQTTConnection.publishBlocking("D0=0;", TopicData.getDeviceTopics(0));
+                    MQTTConnection.publishBlocking("M0=1;", TopicData.getDeviceModeTopics(0));
+                    seekBar.setProgress(0);
+                    seekBar.setClickable(false);
+                    seekBar.setEnabled(false);
+                } else {
+                    MQTTConnection.publishBlocking("M0=0;", TopicData.getDeviceModeTopics(0));
+                    seekBar.setClickable(true);
+                    seekBar.setEnabled(true);
+                }
+            }
+        });
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -192,7 +211,6 @@ public class DeviceActivity extends AppCompatActivity {
                 LEDIntensity = seekBar.getProgress();
             }
         });
-
     }
 
     public void hideElements() {
@@ -202,6 +220,7 @@ public class DeviceActivity extends AppCompatActivity {
         hiddenTwo.setClickable(false);
         seekBar.setVisibility(View.GONE);
         seekBar.setClickable(false);
-
+        ledLdrSwitch.setVisibility(View.GONE);
+        ledLdrSwitch.setClickable(false);
     }
 }

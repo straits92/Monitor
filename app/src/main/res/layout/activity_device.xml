@@ -92,9 +92,9 @@
             android:id="@+id/varyingOutputSeekBar"
             android:layout_width="300dp"
             android:layout_height="30dp"
-            android:layout_marginTop="80dp"
-            android:thumbTint="@color/button_blue"
+            android:layout_marginTop="100dp"
             android:outlineSpotShadowColor="@color/button_blue"
+            android:thumbTint="@color/button_blue"
             android:tooltipText="Output Intensity"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -106,7 +106,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="5dp"
             android:text="@string/outputSeekBarTitle"
-            android:textColor="@color/black"
+            android:textColor="@color/white"
             app:layout_constraintBottom_toTopOf="@+id/varyingOutputSeekBar"
             app:layout_constraintStart_toStartOf="@+id/varyingOutputSeekBar" />
 
@@ -130,6 +130,17 @@
             android:backgroundTint="@color/button_blue"
             android:textColor="@color/white"
             android:text="hidden 2"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <Switch
+            android:id="@+id/LED_LDR_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:text="@string/LED_LDR_switch"
+            android:textColor="@color/white"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

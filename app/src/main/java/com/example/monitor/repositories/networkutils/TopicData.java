@@ -2,6 +2,7 @@ package com.example.monitor.repositories.networkutils;
 
 public class TopicData {
     private static String[] deviceTopics= {"devices/LED_0/value"};
+    private static String[] deviceModeTopics= {"devices/LED_0/mode"};
     private static String generalTopic = "general";
     private static String jsonSensorData = "sensors/json";
     private static String jsonSensorHourlyDataTopic = "sensors/json/hourly";
@@ -9,6 +10,10 @@ public class TopicData {
 
     public static String getDeviceTopics(int index) {
         return deviceTopics[index];
+    }
+
+    public static String getDeviceModeTopics(int index) {
+        return deviceModeTopics[index];
     }
 
     public static String getGeneralTopic() {
