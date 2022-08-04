@@ -25,8 +25,8 @@ public class DeviceActivityViewModel extends ViewModel {
     protected void onCleared() {
         super.onCleared();
         Log.d(TAG, "onCleared: viewmodel destroyed; LED device turned off");
-        MQTTConnection.publishBlocking("M0=0;", TopicData.getDeviceModeTopics(0));
-        MQTTConnection.publishBlocking("D0=0;", TopicData.getDeviceTopics(0));
+        MQTTConnection.publishAsync("M0=0;", TopicData.getDeviceModeTopics(0));
+        MQTTConnection.publishAsync("D0=0;", TopicData.getDeviceTopics(0));
     }
 
 }

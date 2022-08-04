@@ -20,7 +20,12 @@ public class MonitorEnums {
     public static final Integer HUMIDITY = 1;
     public static final Integer BRIGHTNESS = 2;
 
-    /* enumerated constants for temperatur values */
+    /* enumerated constants for temperature values */
     public static final Integer MAXTEMP = 45;
     public static final Integer MINTEMP = -15;
+
+    /* constants for MQTT connectivity */
+    public static final Integer MQTT_CONNECTED = 0;
+    public static final Integer MQTT_NOT_CONNECTED = 1;
+
 }

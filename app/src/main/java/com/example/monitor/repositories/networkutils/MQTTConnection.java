@@ -1,11 +1,14 @@
 package com.example.monitor.repositories.networkutils;
 
+import android.content.Context;
 import android.os.Build;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.monitor.MonitorEnums;
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.execmodel.CacheDataInDbsTask;
 import com.example.monitor.repositories.parseutils.ParseUtils;
@@ -20,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class MQTTConnection {
     private static final String TAG = "MQTTConnection";
@@ -67,6 +71,20 @@ public class MQTTConnection {
         }
     }
 
+    public static int connectAsync() {
+        try {
+            client.toAsync().connect().get(3000, TimeUnit.MILLISECONDS);
+            //success
+            /* test publish and test subscription for mqtt from this activity  */
+            MQTTConnection.publishAsync(TAG+"_MonitorApp_connected", TopicData.getGeneralTopic());
+            return MonitorEnums.MQTT_CONNECTED;
+        } catch (Exception e) {
+            //failure
+            Log.d(TAG, "Not connected - exception: "+e.getMessage());
+            return MonitorEnums.MQTT_NOT_CONNECTED;
+        }
+    }
+
     public static int publishBlocking(String payload, String topic) {
 
         // check connectivity; if dropped, reconnect. if fails, skip and exit with error
@@ -82,26 +100,20 @@ public class MQTTConnection {
 
     }
 
-    public static int subscribeBlocking(String topic) {
-        client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
-                .callback(publish -> {System.out.println("Received message on topic " +
-                        publish.getTopic() + ": " +
-                        new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8));}).send();
-        return 0;
-    }
+    public static int publishAsync(String payload, String topic) {
+       if (client.getState().isConnected()) {
+           client.toAsync().publishWith()
+                   .topic(topic)
+                   .qos(MqttQos.AT_LEAST_ONCE)
+                   .payload(payload.getBytes())
+                   .send();
+           return MonitorEnums.MQTT_CONNECTED;
+       }
 
-    /* subscribe asynchronously, get last retained message on topic, then unsubscribe */
-    public static void getRetainedMsgFromTopic(String topic) {
-        client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
-                .callback(publish -> {
-                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
-                    System.out.println("Received message on topic " +
-                        publish.getTopic() + ": " +
-                        payload);
-                    client.toBlocking().unsubscribeWith().topicFilter(topic).send();
-                }).send();
-    }
+        // Attempt to reconnect?
+        // if this doesnt work then maybe use bg threads of an executor, but where...
 
-    // methods for dealing with connectivity issues?
+       return MonitorEnums.MQTT_NOT_CONNECTED;
+    }
 
 }

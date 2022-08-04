@@ -13,23 +13,20 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
-        android:layout_marginBottom="10dp"
         android:backgroundTint="@color/button_blue"
         android:text="@string/navigateToSensors"
         android:textColor="@color/white"
         android:textSize="12sp"
-        app:layout_constraintBottom_toTopOf="@+id/idDeviceSelectionContainer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.135" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/idDeviceSelectionContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="10dp"
         android:layout_marginEnd="10dp"
         android:background="@drawable/round_corner_display"
         android:outlineProvider="paddedBounds"
@@ -38,7 +35,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@+id/idNavigateToSensors">
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/dropDownDevices"
@@ -47,8 +44,10 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
             android:layout_marginBottom="5dp"
-            android:textColorHint="@color/white"
             android:hint="@string/dropDownDeviceSelection"
+            android:textColorHint="@color/white"
+            app:boxStrokeColor="@color/black"
+            app:hintTextColor="@color/white"
             app:layout_constraintBaseline_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -61,6 +60,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:background="@color/background_grey"
                 android:inputType="none"
                 android:textColor="@color/white"
                 tools:text="some_device" />
@@ -73,7 +73,7 @@
         android:layout_width="match_parent"
         android:layout_height="325dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="150dp"
+        android:layout_marginTop="10dp"
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="50dp"
         android:background="@drawable/round_corner_display"
@@ -82,10 +82,10 @@
         app:circularflow_radiusInDP="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.558">
+        app:layout_constraintTop_toBottomOf="@+id/idDeviceSelectionContainer"
+        app:layout_constraintVertical_bias="0.0">
 
 
         <SeekBar
@@ -116,8 +116,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="75dp"
             android:backgroundTint="@color/button_blue"
-            android:textColor="@color/white"
             android:text="hidden 1"
+            android:textColor="@color/white"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -128,8 +128,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="75dp"
             android:backgroundTint="@color/button_blue"
-            android:textColor="@color/white"
             android:text="hidden 2"
+            android:textColor="@color/white"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -141,6 +141,7 @@
             android:layout_marginTop="30dp"
             android:text="@string/LED_LDR_switch"
             android:textColor="@color/white"
+            android:buttonTint="@color/button_blue"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

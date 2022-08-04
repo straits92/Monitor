@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Monitor</string>
-    <string name="homeLocation">Home</string>
+    <string name="homeLocation">get location</string>
     <string name="refreshData">Refresh [nOK]</string>
     <string name="dataType1">Temperature</string>
     <string name="dataType2">Humidity (empty)</string>
@@ -22,10 +22,12 @@
     <string name="navigateToDevices">go to devices</string>
     <string name="outputSeekBarTitle">Light intensity</string>
     <string name="switchTitle">Toggle on/off</string>
-    <string name="switch1">Weather API (12hr)</string>
-    <string name="switch2">Weather API (1hr)</string>
-    <string name="switch3">Sensor (1hr)</string>
+    <string name="switch1">12h forecast</string>
+    <string name="switch2">1h forecast</string>
+    <string name="switch3">1h sensor</string>
     <string name="LED_LDR_switch">LDR sensor dependence</string>
+    <string name="location">Default</string>
+    <string name="locationDisplay">Belgrade</string>
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>

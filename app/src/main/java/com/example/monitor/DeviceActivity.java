@@ -9,6 +9,7 @@ import androidx.lifecycle.SavedStateViewModelFactory;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,6 +23,7 @@ import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.networkutils.MQTTConnection;
@@ -39,6 +41,7 @@ public class DeviceActivity extends AppCompatActivity {
     private static Float MAX_SEEKBAR_VALUE = 100.0f;
 
     private DeviceActivityViewModel deviceViewModel;
+    private Context appContext;
 
     /* declare display elements here */
     private AutoCompleteTextView dropDownListDevices;
@@ -93,6 +96,7 @@ public class DeviceActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
+        appContext = getApplication();
 
         if (savedInstanceState != null) {
             LEDIntensity = savedInstanceState.getInt(LED);
@@ -105,9 +109,6 @@ public class DeviceActivity extends AppCompatActivity {
 
         /* set up the viewmodel */
         deviceViewModel = new ViewModelProvider(this).get(DeviceActivityViewModel.class);
-
-        MQTTConnection.publishBlocking(TAG+"_MonitorApp_test", "general");
-
         navigateToSensors = findViewById(R.id.idNavigateToSensors);
         hiddenOne = findViewById(R.id.dummyButtonForHideShow1);
         hiddenTwo = findViewById(R.id.dummyButtonForHideShow2);
@@ -158,34 +159,32 @@ public class DeviceActivity extends AppCompatActivity {
             }
         });
 
-        /* for the test buttons */
-        hiddenOne.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "hiddenOne clicked.");
-            }
-        });
-
-        hiddenTwo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d(TAG, "hiddenTwo clicked.");
-            }
-        });
-        /* ... */
-
         ledLdrSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    // first turn off the device
-                    MQTTConnection.publishBlocking("D0=0;", TopicData.getDeviceTopics(0));
-                    MQTTConnection.publishBlocking("M0=1;", TopicData.getDeviceModeTopics(0));
+                    if (MQTTConnection.publishAsync("D0=0;",
+                            TopicData.getDeviceTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
+                        Log.d(TAG, "ledLdrSwitch, onCheckedChanged: NO MQTT CONNECTION");
+                        Toast.makeText(appContext,
+                                "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
+                        MQTTConnection.connectAsync();
+                    } else { // connected
+                        MQTTConnection.publishAsync("M0=1;", TopicData.getDeviceModeTopics(0));
+
+                    }
                     seekBar.setProgress(0);
+                    LEDIntensity = seekBar.getProgress();
                     seekBar.setClickable(false);
                     seekBar.setEnabled(false);
                 } else {
-                    MQTTConnection.publishBlocking("M0=0;", TopicData.getDeviceModeTopics(0));
+                   if (MQTTConnection.publishAsync("M0=0;",
+                           TopicData.getDeviceTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
+                       Log.d(TAG, "ledLdrSwitch, onCheckedChanged: NO MQTT CONNECTION");
+                       Toast.makeText(appContext,
+                               "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
+                       MQTTConnection.connectAsync();
+                    }
                     seekBar.setClickable(true);
                     seekBar.setEnabled(true);
                 }
@@ -207,7 +206,13 @@ public class DeviceActivity extends AppCompatActivity {
                 Float value = (float)seekBarIntValue;
                 Float scaledValue = (value/MAX_SEEKBAR_VALUE)*MAX_LED_INTENSITY;
                 Log.d(TAG, "seekBar value: "+value+"| scaled LED intensity: "+scaledValue);
-                MQTTConnection.publishBlocking("D0="+scaledValue.intValue()+";", TopicData.getDeviceTopics(0));
+                if (MQTTConnection.publishAsync("D0="+scaledValue.intValue()
+                        +";", TopicData.getDeviceTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
+                    Log.d(TAG, "seekBar: NO MQTT CONNECTION");
+                    Toast.makeText(appContext,
+                            "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
+                    MQTTConnection.connectAsync();
+                }
                 LEDIntensity = seekBar.getProgress();
             }
         });

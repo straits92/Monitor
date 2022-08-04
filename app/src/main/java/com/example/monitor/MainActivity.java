@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     /* declare display elements here */
 //    private RecyclerView recyclerView; // for debugging
     private Button homeLocation;
+    private TextView locationDisplay;
     private Button sensorQuery;
     private Button navigateToDevices;
     private Switch weather12hrSwitch;
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
         /* initiate display elements */
         homeLocation = findViewById(R.id.homeLocation);
+        locationDisplay = findViewById(R.id.locationDisplay);
         weatherLineChart = (LineChart) findViewById(R.id.idTemperatureLineChart1);
         sensorQuery = findViewById(R.id.getSensorReading);
         sensorQueryOutput = findViewById(R.id.instantSensorReading);
@@ -107,9 +109,6 @@ public class MainActivity extends AppCompatActivity {
         /* initialize ViewModel scoped to lifecycle of mainactivity; android to destroy it at end */
         weatherViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
 
-        /* test publish and test subscription for mqtt from this activity  */
-        MQTTConnection.publishBlocking(TAG+"_MonitorApp_test", TopicData.getGeneralTopic());
-
         /*** LiveData observers ***/
         /* observe() is a LiveData callback to weather data. When the data changes, redraw. */
         weatherViewModel.getWeatherDataEntries().observe(this, new Observer<List<Weather>>(){
@@ -132,9 +131,11 @@ public class MainActivity extends AppCompatActivity {
                         +localizedHomeName+"; location list size: "+tempList.size());
                 if(localizedHomeName.length() > 12) {
                     String shortened = localizedHomeName;
-                    homeLocation.setText(shortened.substring(0, 10) + "...");
+//                    homeLocation.setText(shortened.substring(0, 10) + "...");
+                    locationDisplay.setText(shortened.substring(0, 10) + "...");
                 } else {
-                    homeLocation.setText(localizedHomeName);
+//                    homeLocation.setText(localizedHomeName);
+                    locationDisplay.setText(localizedHomeName);
                 }
 
                 /* request the execution model to fetch relevant data from the database */
@@ -319,7 +320,8 @@ public class MainActivity extends AppCompatActivity {
                                                 List<Entry> sensorWeatherList,
                                                 Integer selectedParam) {
         long startOfYesterday = dailyTimeOrigin - 86400000; // a day in millis is 60*60*24*1000
-        String currentSelectedLocation = (String) homeLocation.getText();
+//        String currentSelectedLocation = (String) homeLocation.getText();
+        String currentSelectedLocation = (String) locationDisplay.getText();
 
         Iterator iter = weathers.iterator();
         while (iter.hasNext()) {

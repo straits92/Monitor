@@ -46,7 +46,7 @@ public class WeatherRepository {
         locationData = locationDao.getLocationTable();
         instantSensorReading.setValue("VX;TX|");
 
-        /* Instantiate background execution model. Need a reference to application for GPS tasks */
+        /* Instantiate background execution model. Need reference to application for GPS tasks */
         remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application,
                 instantSensorReading);
     }

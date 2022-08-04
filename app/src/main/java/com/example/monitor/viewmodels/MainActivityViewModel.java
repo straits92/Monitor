@@ -13,6 +13,7 @@ import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.WeatherRepository;
 import com.example.monitor.repositories.networkutils.MQTTConnection;
+import com.example.monitor.repositories.networkutils.TopicData;
 
 import java.util.List;
 
@@ -46,7 +47,7 @@ public class MainActivityViewModel extends AndroidViewModel {
 
         /* initialize MQTT for the entire app */
         MQTTmodule = MQTTConnection.getInstance(); // no need for the reference at this point
-        MQTTConnection.connectBlocking();
+        MQTTConnection.connectAsync();
     }
 
     public LiveData<List<Weather>> getWeatherDataEntries() {

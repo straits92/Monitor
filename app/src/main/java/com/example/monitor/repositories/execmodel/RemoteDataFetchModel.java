@@ -1,8 +1,15 @@
 package com.example.monitor.repositories.execmodel;
 
 import android.app.Application;
+import android.content.Context;
+import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.lifecycle.MutableLiveData;
@@ -33,7 +40,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 
 /* Background execution module. Takes care of:
@@ -54,6 +60,7 @@ public class RemoteDataFetchModel {
     private static Application applicationFromRepository;
     private static MonitorLocation defaultHomeLocation;
     private static List<MonitorLocation> defaultMonitorLocationList;
+    private static LocationManager locationManager;
 
     private static ExecutorService networkExecutor;
     private static ExecutorService cachingExecutor;
@@ -75,6 +82,9 @@ public class RemoteDataFetchModel {
             locationDaoReference = locationDao;
             applicationFromRepository = application;
             instantSensorReading = instantSensorReadingObj;
+            locationManager = (LocationManager) applicationFromRepository
+                    .getSystemService(Context.LOCATION_SERVICE);
+
 
             /* define scheduling parameters in seconds */
             Integer howLongVisible = 172800; /* 60 * 60 * 24 * 2 , 48H */
@@ -106,18 +116,8 @@ public class RemoteDataFetchModel {
                 e.printStackTrace();
             }
 
-            /* location network operations */
-            ArrayList<String> gpsLatLon = getGpsLatLon();
-            MonitorLocation fetchedMonitorLocation = null;
-            if (gpsLatLon != null) {
-                fetchedMonitorLocation = getLocationFromNetwork(0, gpsLatLon,
-                        defaultMonitorLocationList);
-                cachingExecutor.submit(new CacheDataInDbsTask(fetchedMonitorLocation,
-                        locationDaoReference));
-            } else {
-                Log.d(TAG, "getInstance: gpsLatLon is null; default to "
-                        + defaultHomeLocation.getLocalizedName());
-            }
+            /* location network operations may also be done at startup */
+            /* updateLocationOnPrompt(); */
 
             /* setup tasks at intervals (in secs) for data aging, visibility, and deletion policy */
             setUpPeriodicWeatherQueries(howLongVisible, howLongStored);
@@ -126,8 +126,18 @@ public class RemoteDataFetchModel {
     }
 
     /* public method for user-prompted update of instant sensor reading */
-    /* (not implemented) offer an option to get instant sensor reading of humidity */
+    /* (not implemented) offer an option to get instant sensor reading of brightness */
     public static synchronized void updateSensorReadingOnPrompt(String parameter) {
+
+        /* check connection */
+        mqtt5Client = MQTTConnection.getClient();
+        if (!mqtt5Client.getState().isConnected()) {
+            Toast.makeText(applicationFromRepository, "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "updateSensorReadingOnPrompt: NO MQTT CONNECTION");
+            MQTTConnection.connectAsync(); // try connecting
+            return;
+        }
+
         serviceExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -147,7 +157,6 @@ public class RemoteDataFetchModel {
 
                 if (MonitorEnums.USE_MQTT) {
                     String topic = TopicData.getJsonSensorInstantDataTopic();
-                    mqtt5Client = MQTTConnection.getClient();
                     mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
                             .callback(publish -> {
                                 String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
@@ -168,7 +177,6 @@ public class RemoteDataFetchModel {
                                 }
 
                                 /* modify LiveData visible in MainActivity */
-//                                instantSensorReading.postValue("[" + sensorValue + "]X, [" + hms + "]");
                                 instantSensorReading.postValue("V" + sensorValue + ";T" + hms + "|");
                             }).send();
                 }
@@ -176,8 +184,13 @@ public class RemoteDataFetchModel {
         });
     }
 
+    /*** location routines ***/
     /* public method for user-prompted location update */
     public static synchronized void updateLocationOnPrompt() {
+        if (!(locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))) {
+            Toast.makeText(applicationFromRepository, "GPS not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
         serviceExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -202,12 +215,9 @@ public class RemoteDataFetchModel {
                 .submit(new GetGpsTask(applicationFromRepository));
         try {
             gpsLatLon = gpsLatLonTask.get(3500, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException t) {
-            Log.i(TAG, "getCurrentLocation() at GPS task: TimeoutException");
-            t.printStackTrace();
-        } catch (ExecutionException | InterruptedException ei) {
-            Log.i(TAG, "getCurrentLocation() at GPS task: other Exception");
-            ei.printStackTrace();
+        } catch (Exception e) {
+            Log.i(TAG, "getCurrentLocation() at GPS task: Exception");
+            e.printStackTrace();
         }
 
         return gpsLatLon;
@@ -217,49 +227,38 @@ public class RemoteDataFetchModel {
     public static synchronized MonitorLocation getLocationFromNetwork(Integer locationType,
                                                                       ArrayList<String> gpsLatLon,
                                                                       List<MonitorLocation> defaultMonitorLocationList) {
-        String locationResponse;
-        URL locationUrl;
         MonitorLocation fetchedMonitorLocation = defaultMonitorLocationList.get(locationType);
-        locationUrl = NetworkUtils.buildUrlForLocation(gpsLatLon.get(0), gpsLatLon.get(1));
+        URL locationUrl = NetworkUtils.buildUrlForLocation(gpsLatLon.get(0), gpsLatLon.get(1));
         Future<String> initialLocationTask = networkExecutor
                 .submit((Callable<String>) new ContactWeatherApiTask(locationUrl));
         try {
-            locationResponse = initialLocationTask.get(4500, TimeUnit.MILLISECONDS);
+            String locationResponse = initialLocationTask.get(4500, TimeUnit.MILLISECONDS);
             Log.d(TAG, "getCurrentLocation: obtained location response from Accuweather");
             fetchedMonitorLocation = ParseUtils.parseLocationJSON(locationResponse);
             fetchedMonitorLocation.setGpsAvailable(true); // if fetched by gps
             fetchedMonitorLocation.setLocationType(locationType);
-        } catch (TimeoutException t) {
-            t.printStackTrace();
-            Log.d(TAG, "getCurrentLocation at accuweather query: Timeout; default location: "
-                    + defaultMonitorLocationList.get(locationType).getLocalizedName());
-        } catch (ExecutionException | InterruptedException ei) {
-            ei.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
             Log.d(TAG, "getCurrentLocation at accuweather query: Exception; default location: "
                     + defaultMonitorLocationList.get(locationType).getLocalizedName());
         }
-
         return fetchedMonitorLocation;
     }
 
+    /*** network forecast tasks ***/
     public static synchronized List<Weather> getForecastFromNetwork(Integer forecastType,
                                                                     MonitorLocation location,
                                                                     String callerMessage) {
         String weatherResponse;
         List<Weather> weatherList = null;
-
         /* forecastType: 0, 12hour; 1, 1hour; 2, sensor 1hour; 3, sensor current reading */
         URL networkWeatherUrl = NetworkUtils.buildUrlForWeather(forecastType, location.getLocation());
         Future<String> initialWeatherTask = networkExecutor
                 .submit((Callable<String>) new ContactWeatherApiTask(networkWeatherUrl));
         try {
             weatherResponse = initialWeatherTask.get(5000, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException t) {
-            Log.d(TAG, "getForecastFromNetwork: timeout, forecast not obtained ");
-            t.printStackTrace();
-            return null;
-        } catch (ExecutionException | InterruptedException e) {
-            Log.d(TAG, "getForecastFromNetwork: execution or interruption exceptions");
+        } catch (Exception e) {
+            Log.d(TAG, "getForecastFromNetwork: execution or timeout exceptions");
             e.printStackTrace();
             return null;
         }
@@ -351,8 +350,19 @@ public class RemoteDataFetchModel {
             public void run() {
                 Log.d(TAG, "run: scheduled Runnable executing hourly weather query. ");
                 MonitorLocation fetchedLocation = defaultHomeLocation;
-
                 long startOfHour = getCurrentMillis();
+
+                /* if no internet connection, skip all scheduled tasks */
+                if (applicationFromRepository != null) {
+                    if (!isConnectingToInternet(applicationFromRepository.getApplicationContext())) {
+                        Log.d(TAG, "scheduleAtFixedRate: NO CONNECTION");
+                        return;
+                    } else {
+                        Log.d(TAG, "scheduleAtFixedRate: CONNECTED");
+                    }
+                } else {
+                    Log.d(TAG, "scheduleAtFixedRate: applicationFromRepository is null");
+                }
 
                 /* (blocking) query the location db for relevant location */
                 Future<MonitorLocation> getLocationFromDbTaskMethod = getLocationFromDbNonBlocking();
@@ -410,7 +420,6 @@ public class RemoteDataFetchModel {
                                     String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
                                     System.out.println("Received data in callback, topic: " + topic + ", payload: " + payload);
                                     mqtt5Client.toBlocking().unsubscribeWith().topicFilter(topic).send();
-
                                     List<Weather> sensorWeatherList = ParseUtils.parseWeatherJSON(payload);
                                     if (sensorWeatherList != null) {
                                         setAnalyticsToWeatherData(sensorWeatherList,
@@ -437,14 +446,25 @@ public class RemoteDataFetchModel {
             public void run() {
                 Log.d(TAG, "run: scheduled Runnable executing hourly weather query. ");
                 MonitorLocation fetchedLocation = defaultHomeLocation;
-
                 long startOfHour = getCurrentMillis();
+
+                /* if no internet connection, skip all scheduled tasks */
+                if (applicationFromRepository != null) {
+                    if (!isConnectingToInternet(applicationFromRepository.getApplicationContext())) {
+                        Log.d(TAG, "scheduleAtFixedRate: NO CONNECTION");
+                        return;
+                    } else {
+                        Log.d(TAG, "scheduleAtFixedRate: CONNECTED");
+                    }
+                } else {
+                    Log.d(TAG, "scheduleAtFixedRate: applicationFromRepository is null, why?");
+                }
 
                 /* (blocking) query the location db for relevant location */
                 Future<MonitorLocation> getLocationFromDbTaskMethod = getLocationFromDbNonBlocking();
                 try {
                     fetchedLocation = getLocationFromDbTaskMethod.get();
-                } catch (ExecutionException | InterruptedException e) {
+                } catch (Exception e) {
                     Log.d(TAG, "setUpPeriodicWeatherQueries: location not fetched from db."
                             + " default to " + defaultMonitorLocationList.get(0).getLocalizedName());
                     e.printStackTrace();
@@ -528,7 +548,7 @@ public class RemoteDataFetchModel {
         return getWeatherListFromDbTask;
     }
 
-    /* data maintenance methods */
+    /*** data maintenance methods ***/
     /* database maintenance to be called in a runnable object as a background task */
     private static void maintainWeatherDatabase(Integer howLongVisible, Integer howLongStored) {
         /* (blocking) query the weather db for entire list by submitting to caching thread */
@@ -700,5 +720,34 @@ public class RemoteDataFetchModel {
         today.set(Calendar.MINUTE, 0);
         long startOfHour = today.getTimeInMillis(); // add 1hr for +01:00 ?
         return startOfHour;
+    }
+
+
+
+
+    public static boolean isConnectingToInternet(Context mContext) {
+        if (mContext == null) return false;
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                final Network network = connectivityManager.getActiveNetwork();
+                if (network != null) {
+                    final NetworkCapabilities nc = connectivityManager.getNetworkCapabilities(network);
+
+                    return (nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                            nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI));
+                }
+            } else {
+
+                NetworkInfo[] networkInfos = connectivityManager.getAllNetworkInfo();
+                for (NetworkInfo tempNetworkInfo : networkInfos) {
+                    if (tempNetworkInfo.isConnected()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }
