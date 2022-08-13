@@ -50,6 +50,7 @@ public class MainActivityViewModel extends AndroidViewModel {
         MQTTConnection.connectAsync();
     }
 
+    /*** wrapper methods used in the MainActivity ***/
     public LiveData<List<Weather>> getWeatherDataEntries() {
         return immutableWeatherDataEntries;
     }

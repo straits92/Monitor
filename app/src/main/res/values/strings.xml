@@ -28,6 +28,8 @@
     <string name="LED_LDR_switch">LDR sensor dependence</string>
     <string name="location">Default</string>
     <string name="locationDisplay">Belgrade</string>
+    <string name="sensorStatusHeader">Status</string>
+    <string name="deviceStatusHeader">Device status</string>
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>

@@ -23,14 +23,11 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.RadioGroup;
 import android.widget.Switch;
 import android.widget.TextView;
 
 import com.example.monitor.models.MonitorLocation;
 import com.example.monitor.models.Weather;
-import com.example.monitor.repositories.networkutils.MQTTConnection;
-import com.example.monitor.repositories.networkutils.TopicData;
 import com.example.monitor.viewmodels.MainActivityViewModel;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.LimitLine;
@@ -55,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
     private MainActivityViewModel weatherViewModel;
 
     /* declare display elements here */
-//    private RecyclerView recyclerView; // for debugging
     private Button homeLocation;
     private TextView locationDisplay;
     private Button sensorQuery;
@@ -94,14 +90,6 @@ public class MainActivity extends AppCompatActivity {
         weather1hrSwitch = findViewById(R.id.switch2);
         sensor1hrSwitch = findViewById(R.id.switch3);
 
-
-        /* initialize recycler view used for debugging */
-//        recyclerView = findViewById(R.id.recyclerView);
-//        LinearLayoutManager llm = new LinearLayoutManager(this);
-//        recyclerView.setLayoutManager(llm); /* necessary for forming the recyclerview */
-//        RecyclerWeatherAdapter weatherAdapter = new RecyclerWeatherAdapter();
-//        recyclerView.setAdapter(weatherAdapter);
-
         /* permission granted slowly; everything is instantiated before the user can approve.*/
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION);
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
@@ -119,22 +107,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        /* update home location button/display;
-        * may prompt an immediate request for a 12hr forecast. (not implemented) */
+        /* update home location button/display; should prompt forecast request (not implemented) */
         weatherViewModel.getLocationData().observe(this,
                 new Observer<List<MonitorLocation>>(){
             @Override
             public void onChanged(@Nullable List<MonitorLocation> monitorLocations) {
                 List<MonitorLocation> tempList = weatherViewModel.getLocationData().getValue();
                 String localizedHomeName = tempList.get(0).getLocalizedName();
-                Log.d(TAG, "Data observed from LocationDatabase. Location: "
-                        +localizedHomeName+"; location list size: "+tempList.size());
                 if(localizedHomeName.length() > 12) {
                     String shortened = localizedHomeName;
-//                    homeLocation.setText(shortened.substring(0, 10) + "...");
                     locationDisplay.setText(shortened.substring(0, 10) + "...");
                 } else {
-//                    homeLocation.setText(localizedHomeName);
                     locationDisplay.setText(localizedHomeName);
                 }
 
@@ -149,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         /* for obtaining instantaneous sensor reading upon user prompt */
+        /* delimiter format is Vx;Tx| where x the sensor value, or timestamp */
         weatherViewModel.getInstantSensorReading().observe(this,
             new Observer<String>(){
                 @Override
@@ -267,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
         /* create fixed chart: x-axis is 0 to 48 hours (yesterday and today) */
         String graphText = "None selected";
         if (selectedParam == MonitorEnums.TEMPERATURE) {
-            drawChartAxes(MonitorEnums.MINTEMP, MonitorEnums.MAXTEMP, 12, 12);
+            drawChartAxes(MonitorConstants.MINTEMP, MonitorConstants.MAXTEMP, 12, 12);
             graphText = "Temperature in Celsius (yesterday, today)";
         } else if (selectedParam == MonitorEnums.HUMIDITY) {
             drawChartAxes(0, 100, 12, 12);
@@ -295,16 +279,16 @@ public class MainActivity extends AppCompatActivity {
 
         /* bind the data to the temperatureLineChart */
         ArrayList<ILineDataSet> lineDataSets = new ArrayList<>();
-        LineDataSet twelveHourDataSet = new LineDataSet(twelveHourWeatherList,
-                "Weather API (12hr)");
-        LineDataSet oneHourDataSet = new LineDataSet(hourlyWeatherList,
-                "Weather API (1hr)");
-        LineDataSet oneHourSensorDataSet = new LineDataSet(sensorWeatherList,
-                "Sensor (1hr)");
+        LineDataSet twelveHourDataSet = new LineDataSet(twelveHourWeatherList,"Weather API (12hr)");
+        LineDataSet oneHourDataSet = new LineDataSet(hourlyWeatherList,"Weather API (1hr)");
+        LineDataSet oneHourSensorDataSet = new LineDataSet(sensorWeatherList,"Sensor (1hr)");
 
         twelveHourDataSet.setDrawCircles(true);twelveHourDataSet.setColor(Color.RED);
+        twelveHourDataSet.setValueTextColor(Color.WHITE);
         oneHourDataSet.setDrawCircles(true); oneHourDataSet.setColor(Color.GREEN);
+        oneHourDataSet.setValueTextColor(Color.WHITE);
         oneHourSensorDataSet.setDrawCircles(true); oneHourSensorDataSet.setColor(Color.YELLOW);
+        oneHourSensorDataSet.setValueTextColor(Color.WHITE);
 
         if (weather12hrSwitch.isChecked()) {lineDataSets.add(twelveHourDataSet);}
         if (weather1hrSwitch.isChecked()) {lineDataSets.add(oneHourDataSet);}
@@ -314,13 +298,13 @@ public class MainActivity extends AppCompatActivity {
         weatherLineChart.getLegend().setTextColor(Color.WHITE);
     }
 
+    /* sort data points into sensor data and forecast types, and put into corresponding trends */
     private void separateWeatherDataTrendsFixed(long dailyTimeOrigin, List<Weather> weathers,
                                                 List<Entry> twelveHourWeatherList,
                                                 List<Entry> hourlyWeatherList,
                                                 List<Entry> sensorWeatherList,
                                                 Integer selectedParam) {
-        long startOfYesterday = dailyTimeOrigin - 86400000; // a day in millis is 60*60*24*1000
-//        String currentSelectedLocation = (String) homeLocation.getText();
+        long startOfYesterday = dailyTimeOrigin - MonitorConstants.ONE_DAY;
         String currentSelectedLocation = (String) locationDisplay.getText();
 
         Iterator iter = weathers.iterator();
@@ -338,7 +322,7 @@ public class MainActivity extends AppCompatActivity {
 
             /* get hours offset from start of yesterday; recalculated whenever drawn */
             long dataPointTime = weatherEntryInIter.getTimeInMillis();
-            long hour = (dataPointTime - startOfYesterday)/3600000; // 0 to 48
+            long hour = (dataPointTime - startOfYesterday)/MonitorConstants.ONE_HOUR; // 0 to 48
 
             float parameter;
             if (selectedParam == MonitorEnums.TEMPERATURE) {
@@ -398,12 +382,12 @@ public class MainActivity extends AppCompatActivity {
         /* draw line showing current time */
         long dailyTimeOrigin = getStartOfTimeUnitMillis("day");
         long currentTime = getStartOfTimeUnitMillis("hour");
-        long startOfYesterday = dailyTimeOrigin - 86400000; // a day in millis is 60*60*24*1000
-        long currentHour = (currentTime - startOfYesterday)/3600000;
+        long startOfYesterday = dailyTimeOrigin - MonitorConstants.ONE_DAY;
+        long currentHour = (currentTime - startOfYesterday)/MonitorConstants.ONE_HOUR;
 
         xAxis.removeAllLimitLines();
         LimitLine ll = new LimitLine(currentHour, "T: "+(currentHour%24)+"h");
-        ll.setLineColor(Color.RED);
+        ll.setLineColor(getResources().getColor(R.color.yellowish_orange));
         ll.setLineWidth(2f);
         ll.setTextColor(Color.WHITE);
         ll.setTextSize(12f);

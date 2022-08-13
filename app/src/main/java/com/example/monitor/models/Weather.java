@@ -58,7 +58,7 @@ public class Weather {
     private Integer persistence; /* 0: less than 48h; 1: less than a week; 2: older than a week */
     private Integer category; /* 1: hourly, 0: 12h, 2: raspberry sensor */
     private long timeInMillis;
-    /* add humidity etc ... */
+    /* add other parameters... */
 
 
     public Weather(String celsius, String humidity, String link, String time, String location,

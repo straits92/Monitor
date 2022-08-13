@@ -38,8 +38,6 @@ public abstract class LocationDatabase extends RoomDatabase {
                     .fallbackToDestructiveMigration()/* deletes previous version db content */
                     .addCallback(roomCallback)/* call right after creating the instance for setup,but in which thread  */
                     .build();
-
-//            Log.d(TAG, "getInstance: LocationDatabase instantiated!");
         }
         return instance;
     }
@@ -49,7 +47,6 @@ public abstract class LocationDatabase extends RoomDatabase {
         @Override
         public void onCreate(@NonNull SupportSQLiteDatabase db) {
             super.onCreate(db);
-
         }
     };
 

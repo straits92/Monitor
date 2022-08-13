@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.monitor.MonitorConstants;
 import com.example.monitor.databases.LocationDao;
 import com.example.monitor.databases.LocationDatabase;
 import com.example.monitor.databases.WeatherDao;
@@ -36,7 +37,6 @@ public class WeatherRepository {
     private MutableLiveData<String> instantSensorReading = new MutableLiveData<>();
 
     /* potential singleton alternative: return static instance via getInstance(application) */
-    /* singleton pattern used to avoid having open connections to web servers, APIs, caches etc */
     public WeatherRepository(Application application) {
         WeatherDatabase weatherDatabase  = WeatherDatabase.getInstance(application);
         LocationDatabase locationDatabase = LocationDatabase.getInstance(application);
@@ -44,13 +44,14 @@ public class WeatherRepository {
         locationDao = locationDatabase.locationDao();
         weatherDataEntries = weatherDao.getAllWeatherPoints();
         locationData = locationDao.getLocationTable();
-        instantSensorReading.setValue("VX;TX|");
+        instantSensorReading.setValue(MonitorConstants.SENSOR_READING_FORMAT);
 
         /* Instantiate background execution model. Need reference to application for GPS tasks */
         remoteModel = RemoteDataFetchModel.getInstance(weatherDao, locationDao, application,
                 instantSensorReading);
     }
 
+    /*** wrapper methods used in the ViewModel ***/
     /* Room sets up this database operation to run on a bg thread, according to CodingInFlow. */
     public LiveData<List<Weather>> getWeatherDataEntries() {
         return weatherDataEntries;

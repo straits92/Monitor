@@ -40,7 +40,7 @@ public class NetworkUtils {
     private static final String LAN_URL_1HOUR = "http://"+LAN_IP_PI_4B+SUBDIR_HOURLY;
     private static final String LAN_URL_INSTANT = "http://"+LAN_IP_PI_4B+SUBDIR_INSTANT;
 
-    /* Internet */
+    /* Internet via ngrok */
     private static final String NGROK_TUNNEL_LINK_TEMP = "http://8920-178-221-182-107.ngrok.io";
     private static final String NGROK_URL_1HOUR = NGROK_TUNNEL_LINK_TEMP +SUBDIR_HOURLY;
     private static final String NGROK_URL_INSTANT = NGROK_TUNNEL_LINK_TEMP +SUBDIR_INSTANT;

@@ -21,8 +21,6 @@ import java.util.concurrent.Future;
 @Database(entities = {Weather.class}, version = 1)
 public abstract class WeatherDatabase extends RoomDatabase {
     private static final String TAG = "WeatherDatabase:";
-
-    /* turn this class into a singleton; always use same instance everywhere */
     private static WeatherDatabase instance;
     private WeatherDao weatherDao = weatherDao();
 
@@ -37,8 +35,6 @@ public abstract class WeatherDatabase extends RoomDatabase {
                     .fallbackToDestructiveMigration()/* deletes previous version db content */
                     .addCallback(roomCallback)/* call right after creating the instance for setup  */
                     .build();
-
-//            Log.d(TAG, "getInstance: WeatherDatabase instantiated!");
         }
         return instance;
     }

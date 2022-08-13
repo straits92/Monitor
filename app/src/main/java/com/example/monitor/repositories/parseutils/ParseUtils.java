@@ -53,6 +53,8 @@ public class ParseUtils {
                     weather.setHumidity(humidityVal);
 
                     /* further weather info can be extracted from object, like brightness */
+                    long timeInMillis = singleEntry.getLong("EpochDateTime");
+                    weather.setTimeInMillis(timeInMillis*1000);
 
                     weatherArrayList.add(weather);
                 }

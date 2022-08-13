@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 
 public class JSONUtils {
     private static final Gson gson = new Gson();
-//    private JSONUtils(){}
 
     public static boolean isJSONValid(String jsonInString) {
         try {

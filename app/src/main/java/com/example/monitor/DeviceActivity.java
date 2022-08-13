@@ -1,13 +1,8 @@
 package com.example.monitor;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.SavedStateViewModelFactory;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Context;
 import android.content.Intent;
@@ -19,27 +14,21 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.monitor.models.Weather;
 import com.example.monitor.repositories.networkutils.MQTTConnection;
 import com.example.monitor.repositories.networkutils.TopicData;
+import com.example.monitor.repositories.parseutils.ParseUtils;
 import com.example.monitor.viewmodels.DeviceActivityViewModel;
-import com.example.monitor.viewmodels.MainActivityViewModel;
-import com.github.mikephil.charting.charts.LineChart;
-import com.google.api.LogDescriptor;
+import com.hivemq.client.mqtt.mqtt5.Mqtt5Client;
 
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 public class DeviceActivity extends AppCompatActivity {
     private static final String TAG = "DeviceActivity";
-    private static Float MAX_LED_INTENSITY = 35.0f;
-    private static Float MAX_SEEKBAR_VALUE = 100.0f;
-
     private DeviceActivityViewModel deviceViewModel;
     private Context appContext;
 
@@ -50,14 +39,14 @@ public class DeviceActivity extends AppCompatActivity {
     private SeekBar seekBar;
     private Button hiddenTwo;
     private Switch ledLdrSwitch;
+    private TextView deviceStatus;
 
     private Integer LEDIntensity;
-    static final String LED = "LEDIntensity";
+    static final String LED = "LEDIntensity"; // key for fetching value from savedinstance
     private Bundle state;
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
-//        Log.d(TAG, "onSaveInstanceState: saving LEDIntensity :"+LEDIntensity);
         deviceViewModel.setLEDIntensity(LEDIntensity);
         outState.putInt(LED, LEDIntensity);
         super.onSaveInstanceState(outState);
@@ -70,12 +59,11 @@ public class DeviceActivity extends AppCompatActivity {
         if (savedInstanceState != null) {
             LEDIntensity = savedInstanceState.getInt(LED);
             Log.d(TAG, "onRestoreInstanceState: restoring LEDIntensity from state: " + LEDIntensity);
-            seekBar.setProgress(LEDIntensity);
         } else {
             LEDIntensity = deviceViewModel.getLEDIntensity();
             Log.d(TAG, "onRestoreInstanceState: restoring LED intensity from VM variable: " + LEDIntensity);
-            seekBar.setProgress(LEDIntensity);
         }
+        seekBar.setProgress(LEDIntensity);
     }
 
     @Override
@@ -83,11 +71,9 @@ public class DeviceActivity extends AppCompatActivity {
         super.onResume();
         if (state != null) {
             LEDIntensity = state.getInt(LED);
-//            Log.d(TAG, "onResume: getting LED intensity from state: " + LEDIntensity);
             seekBar.setProgress(LEDIntensity);
         } else {
             LEDIntensity = deviceViewModel.getLEDIntensity();
-//            Log.d(TAG, "onResume: getting LED intensity from VM variable: " + LEDIntensity);
             seekBar.setProgress(LEDIntensity);
         }
     }
@@ -114,7 +100,8 @@ public class DeviceActivity extends AppCompatActivity {
         hiddenTwo = findViewById(R.id.dummyButtonForHideShow2);
         seekBar = findViewById(R.id.varyingOutputSeekBar);
         ledLdrSwitch = findViewById(R.id.LED_LDR_switch);
-        hideElements();
+        deviceStatus = findViewById(R.id.deviceStatus);
+        hideDeviceControlElements();
 
         /* set up dropdown list based on hardcoded parameters */
         String[] monitorDevices = getResources().getStringArray(R.array.monitoring_devices);
@@ -123,6 +110,7 @@ public class DeviceActivity extends AppCompatActivity {
         dropDownListDevices = findViewById(R.id.dropDownDevicesText);
         dropDownListDevices.setAdapter(dropDownListDevicesAdapter);
 
+        /*** set up the element listeners ***/
         navigateToSensors.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -141,8 +129,7 @@ public class DeviceActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
                 String selectedParameter = dropDownListDevices.getText().toString();
-                hideElements();
-
+                hideDeviceControlElements();
                 if (selectedParameter.equals("LED Light")) {
                     seekBar.setVisibility(View.VISIBLE);
                     seekBar.setClickable(true);
@@ -171,8 +158,8 @@ public class DeviceActivity extends AppCompatActivity {
                         MQTTConnection.connectAsync();
                     } else { // connected
                         MQTTConnection.publishAsync("M0=1;", TopicData.getDeviceModeTopics(0));
-
                     }
+
                     seekBar.setProgress(0);
                     LEDIntensity = seekBar.getProgress();
                     seekBar.setClickable(false);
@@ -184,10 +171,21 @@ public class DeviceActivity extends AppCompatActivity {
                        Toast.makeText(appContext,
                                "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
                        MQTTConnection.connectAsync();
-                    }
+                    } else {
+                   }
                     seekBar.setClickable(true);
                     seekBar.setEnabled(true);
                 }
+
+                /* check if devices online by subscribing async to device status topic */
+                // should run async, but if the WiFi module publishes that which pico
+                // echoed too slowly, it will say "offline". so it's best to make this a
+                // user-prompted functionality? either way it only makes sense when the
+                // user is directly varying the output. if it's sensor-dependent, then
+                // the app has no reference value to compare with the Pico echo.
+                // so again in this case the criterium for the device being online
+                // is the timestamp available in a json on its status topic.
+                // checkIfDeviceOnline(MonitorEnums.LED_DEVICE, 0);
             }
         });
 
@@ -202,12 +200,16 @@ public class DeviceActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+
+                /* check if devices online by subscribing async to device status topic */
+                // deviceStatus.setText("OFFLINE");
+
                 Integer seekBarIntValue = seekBar.getProgress();
                 Float value = (float)seekBarIntValue;
-                Float scaledValue = (value/MAX_SEEKBAR_VALUE)*MAX_LED_INTENSITY;
+                Float scaledValue = (value/MonitorConstants.MAX_SEEKBAR_VALUE)*MonitorConstants.MAX_LED_INTENSITY;
                 Log.d(TAG, "seekBar value: "+value+"| scaled LED intensity: "+scaledValue);
                 if (MQTTConnection.publishAsync("D0="+scaledValue.intValue()
-                        +";", TopicData.getDeviceTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
+                        +";", TopicData.getDeviceTopics(MonitorEnums.LED_DEVICE)) != MonitorEnums.MQTT_CONNECTED) {
                     Log.d(TAG, "seekBar: NO MQTT CONNECTION");
                     Toast.makeText(appContext,
                             "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
@@ -218,7 +220,29 @@ public class DeviceActivity extends AppCompatActivity {
         });
     }
 
-    public void hideElements() {
+    /* criterium for device being online is if it echoes the value which was last sent to it */
+    private void checkIfDeviceOnline(int deviceIndex, int deviceValue) {
+
+        Mqtt5Client mqtt5Client = MQTTConnection.getClient();
+        String topic = TopicData.getDeviceStatusTopics(deviceIndex);
+        mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
+                .callback(publish -> {
+                    String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
+                    System.out.println("Received data in callback, topic: " + topic + ", payload: " + payload);
+                    mqtt5Client.toBlocking().unsubscribeWith().topicFilter(topic).send();
+                    int deviceValueFromJson = 0; // ParseUtils.parseDeviceJsonTimestamp(payload);
+
+                    // then setText
+                    if (deviceValueFromJson == deviceValue) {
+                        deviceStatus.setText("ONLINE");
+                    } else {
+                        deviceStatus.setText("OFFLINE");
+                    }
+
+                }).send();
+    }
+
+    public void hideDeviceControlElements() {
         hiddenOne.setVisibility(View.GONE);
         hiddenOne.setClickable(false);
         hiddenTwo.setVisibility(View.GONE);

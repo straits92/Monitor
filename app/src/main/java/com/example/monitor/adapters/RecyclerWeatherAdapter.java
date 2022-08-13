@@ -19,7 +19,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-/* RecyclerView is populated by the OS using these callback methods */
+/* class was used for recyclerView, to debug by looking at a text list of data points. phased out. */
 public class RecyclerWeatherAdapter extends RecyclerView.Adapter<RecyclerWeatherAdapter.WeatherViewHolder> {
     private List<Weather> weatherRecyclerEntries = new ArrayList<>();
 

@@ -110,8 +110,7 @@ public class MQTTConnection {
            return MonitorEnums.MQTT_CONNECTED;
        }
 
-        // Attempt to reconnect?
-        // if this doesnt work then maybe use bg threads of an executor, but where...
+        // Attempt to reconnect here?
 
        return MonitorEnums.MQTT_NOT_CONNECTED;
     }
