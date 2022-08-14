@@ -26,5 +26,6 @@ public class MonitorEnums {
 
     /* enums for devices */
     public static final Integer LED_DEVICE = 0;
+    public static final Integer NO_DEVICE_SELECTED = -1;
 
 }

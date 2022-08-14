@@ -110,4 +110,18 @@ public class ParseUtils {
         }
         return null;
     }
+
+    public static long parseDeviceJsonTimestamp(String payload) {
+        if (payload != null) {
+            try {
+                JSONObject result = new JSONObject(payload);
+                long timeInMillis = result.getLong("EpochDateTime");
+                return timeInMillis*1000;
+            } catch (JSONException e) {
+                Log.d(TAG, "parseDeviceJsonTimestamp: parsing of response failed");
+                e.printStackTrace();
+            }
+        }
+        return 0;
+    }
 }

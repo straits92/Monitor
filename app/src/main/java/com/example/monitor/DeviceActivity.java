@@ -31,6 +31,7 @@ public class DeviceActivity extends AppCompatActivity {
     private static final String TAG = "DeviceActivity";
     private DeviceActivityViewModel deviceViewModel;
     private Context appContext;
+    private Integer currentDeviceIndex = MonitorEnums.NO_DEVICE_SELECTED;
 
     /* declare display elements here */
     private AutoCompleteTextView dropDownListDevices;
@@ -40,6 +41,7 @@ public class DeviceActivity extends AppCompatActivity {
     private Button hiddenTwo;
     private Switch ledLdrSwitch;
     private TextView deviceStatus;
+    private Button deviceStatusButton;
 
     private Integer LEDIntensity;
     static final String LED = "LEDIntensity"; // key for fetching value from savedinstance
@@ -101,6 +103,7 @@ public class DeviceActivity extends AppCompatActivity {
         seekBar = findViewById(R.id.varyingOutputSeekBar);
         ledLdrSwitch = findViewById(R.id.LED_LDR_switch);
         deviceStatus = findViewById(R.id.deviceStatus);
+        deviceStatusButton = findViewById(R.id.deviceStatusButton);
         hideDeviceControlElements();
 
         /* set up dropdown list based on hardcoded parameters */
@@ -131,17 +134,22 @@ public class DeviceActivity extends AppCompatActivity {
                 String selectedParameter = dropDownListDevices.getText().toString();
                 hideDeviceControlElements();
                 if (selectedParameter.equals("LED Light")) {
+                    currentDeviceIndex = MonitorEnums.LED_DEVICE;
                     seekBar.setVisibility(View.VISIBLE);
                     seekBar.setClickable(true);
                     ledLdrSwitch.setVisibility(View.VISIBLE);
                     ledLdrSwitch.setClickable(true);
                 } else if (selectedParameter.equals("Placeholder 1")) {
+                    currentDeviceIndex = MonitorEnums.NO_DEVICE_SELECTED;
                     hiddenOne.setVisibility(View.VISIBLE);
                     hiddenOne.setClickable(true);
                 } else if (selectedParameter.equals("Placeholder 2")) {
+                    currentDeviceIndex = MonitorEnums.NO_DEVICE_SELECTED;
                     hiddenTwo.setVisibility(View.VISIBLE);
                     hiddenTwo.setClickable(true);
-                } else {}
+                } else {
+                    currentDeviceIndex = MonitorEnums.NO_DEVICE_SELECTED;
+                }
 
             }
         });
@@ -177,15 +185,6 @@ public class DeviceActivity extends AppCompatActivity {
                     seekBar.setEnabled(true);
                 }
 
-                /* check if devices online by subscribing async to device status topic */
-                // should run async, but if the WiFi module publishes that which pico
-                // echoed too slowly, it will say "offline". so it's best to make this a
-                // user-prompted functionality? either way it only makes sense when the
-                // user is directly varying the output. if it's sensor-dependent, then
-                // the app has no reference value to compare with the Pico echo.
-                // so again in this case the criterium for the device being online
-                // is the timestamp available in a json on its status topic.
-                // checkIfDeviceOnline(MonitorEnums.LED_DEVICE, 0);
             }
         });
 
@@ -218,25 +217,57 @@ public class DeviceActivity extends AppCompatActivity {
                 LEDIntensity = seekBar.getProgress();
             }
         });
+
+        deviceStatusButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (currentDeviceIndex == MonitorEnums.NO_DEVICE_SELECTED) {
+                    Log.d(TAG, "onClick: no device selected");
+                    Toast.makeText(appContext,
+                            "No device selected", Toast.LENGTH_SHORT).show();
+//                    deviceStatus.setText("N/A");
+
+                } else {
+                    Log.d(TAG, "onClick: valid device selected, index "+ currentDeviceIndex);
+                    checkIfDeviceOnline();
+                }
+            }
+        });
+
     }
 
-    /* criterium for device being online is if it echoes the value which was last sent to it */
-    private void checkIfDeviceOnline(int deviceIndex, int deviceValue) {
+    /* criterium for device being online is if its timestamp is within 2 minutes */
+    private void checkIfDeviceOnline() {
 
         Mqtt5Client mqtt5Client = MQTTConnection.getClient();
-        String topic = TopicData.getDeviceStatusTopics(deviceIndex);
+        String topic = TopicData.getDeviceStatusTopics(currentDeviceIndex);
         mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
                 .callback(publish -> {
                     String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
                     System.out.println("Received data in callback, topic: " + topic + ", payload: " + payload);
                     mqtt5Client.toBlocking().unsubscribeWith().topicFilter(topic).send();
-                    int deviceValueFromJson = 0; // ParseUtils.parseDeviceJsonTimestamp(payload);
+                    long deviceTimestampMillis = ParseUtils.parseDeviceJsonTimestamp(payload) - MonitorConstants.TIMEZONE_OFFSET;
+                    long currentTime = System.currentTimeMillis() /*+ MonitorConstants.TIMEZONE_OFFSET*/;
 
-                    // then setText
-                    if (deviceValueFromJson == deviceValue) {
-                        deviceStatus.setText("ONLINE");
+                    Log.d(TAG, "checkIfDeviceOnline: deviceTimestamp: "
+                            + deviceTimestampMillis+ ", currentTime: " + currentTime
+                            + " difference: "+Math.abs(deviceTimestampMillis - currentTime));
+                    if (Math.abs(deviceTimestampMillis - currentTime) < MonitorConstants.TWO_MINUTES) {
+                        deviceStatus.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                deviceStatus.setText("ONLINE");
+                            }
+                        });
+                        Log.d(TAG, "checkIfDeviceOnline: device is online");
                     } else {
-                        deviceStatus.setText("OFFLINE");
+                        deviceStatus.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                deviceStatus.setText("OFFLINE");
+                            }
+                        });
+                        Log.d(TAG, "checkIfDeviceOnline: device is offline");
                     }
 
                 }).send();

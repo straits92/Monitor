@@ -30,6 +30,7 @@
     <string name="locationDisplay">Belgrade</string>
     <string name="sensorStatusHeader">Status</string>
     <string name="deviceStatusHeader">Device status</string>
+    <string name="deviceStatusButton">Device status</string>
     <string-array name="monitoring_parameters">
         <item>Temperature</item>
         <item>Humidity</item>

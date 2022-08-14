@@ -22,12 +22,15 @@ public class MonitorConstants {
     public static final Integer PERIODIC_DELAY_MAINTENANCE = 3600; // make it once a day? 3600 for now
 
     /* duration in millis */
+    public static final Integer TEN_SECONDS = 10000;
     public static final Integer TEN_MINUTES = 600000;
     public static final Integer ONE_HOUR = 3600000;
     public static final Integer TWO_HOURS = 3600000*2;
     public static final Integer ONE_DAY = 86400000;
     public static final Integer STD_TIMEOUT = 4000;
     public static final Integer TWO_MINUTES = 120000;
+    public static final Integer TIMEZONE_OFFSET = MonitorConstants.TWO_HOURS;
+
 
     public static final String SENSOR_READING_FORMAT = "VX;TX|";
     public static final String DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ssXXX";
