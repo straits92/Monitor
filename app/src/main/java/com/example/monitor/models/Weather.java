@@ -55,8 +55,8 @@ public class Weather {
     private String link;
     private String time;
     private String location; /* this is the string name of the city in which temperature measured  */
-    private Integer persistence; /* 0: less than 48h; 1: less than a week; 2: older than a week */
-    private Integer category; /* 1: hourly, 0: 12h, 2: raspberry sensor */
+    private Integer persistence;
+    private Integer category;
     private long timeInMillis;
     /* add other parameters... */
 

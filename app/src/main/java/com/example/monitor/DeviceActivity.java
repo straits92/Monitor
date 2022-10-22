@@ -33,7 +33,7 @@ public class DeviceActivity extends AppCompatActivity {
     private Context appContext;
     private Integer currentDeviceIndex = MonitorEnums.NO_DEVICE_SELECTED;
 
-    /* declare display elements here */
+    /* display elements */
     private AutoCompleteTextView dropDownListDevices;
     private Button navigateToSensors;
     private Button hiddenOne;
@@ -60,10 +60,12 @@ public class DeviceActivity extends AppCompatActivity {
         super.onRestoreInstanceState(savedInstanceState);
         if (savedInstanceState != null) {
             LEDIntensity = savedInstanceState.getInt(LED);
-            Log.d(TAG, "onRestoreInstanceState: restoring LEDIntensity from state: " + LEDIntensity);
+            Log.d(TAG, "onRestoreInstanceState: restoring LEDIntensity from " +
+                    "state: " + LEDIntensity);
         } else {
             LEDIntensity = deviceViewModel.getLEDIntensity();
-            Log.d(TAG, "onRestoreInstanceState: restoring LED intensity from VM variable: " + LEDIntensity);
+            Log.d(TAG, "onRestoreInstanceState: restoring LED intensity from " +
+                    "VM variable: " + LEDIntensity);
         }
         seekBar.setProgress(LEDIntensity);
     }
@@ -95,7 +97,6 @@ public class DeviceActivity extends AppCompatActivity {
             Log.d(TAG, "onCreate: savedInstanceState created anew");
         }
 
-        /* set up the viewmodel */
         deviceViewModel = new ViewModelProvider(this).get(DeviceActivityViewModel.class);
         navigateToSensors = findViewById(R.id.idNavigateToSensors);
         hiddenOne = findViewById(R.id.dummyButtonForHideShow1);
@@ -106,7 +107,7 @@ public class DeviceActivity extends AppCompatActivity {
         deviceStatusButton = findViewById(R.id.deviceStatusButton);
         hideDeviceControlElements();
 
-        /* set up dropdown list based on hardcoded parameters */
+        /* list of available devices */
         String[] monitorDevices = getResources().getStringArray(R.array.monitoring_devices);
         ArrayAdapter dropDownListDevicesAdapter = new ArrayAdapter(this,
                 R.layout.dropdown_item_monitoring_parameter, monitorDevices);
@@ -117,16 +118,15 @@ public class DeviceActivity extends AppCompatActivity {
         navigateToSensors.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // if recreating it is needed
-//                Intent intent = new Intent(DeviceActivity.this, MainActivity.class);
-//                startActivity(intent);
-                Intent openMainActivity = new Intent(DeviceActivity.this, MainActivity.class);
-                openMainActivity.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivityIfNeeded(openMainActivity, 0);
+                // if recreating the activity is needed
+//                startActivity(new Intent(DeviceActivity.this, MainActivity.class));
+                Intent intent = new Intent(DeviceActivity.this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivityIfNeeded(intent, 0);
             }
         });
 
-        /* sets up the listener for changes to the drop down selection */
+        /* display appropriate elements in panel based on what device is selected */
         dropDownListDevices.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -158,29 +158,29 @@ public class DeviceActivity extends AppCompatActivity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    if (MQTTConnection.publishAsync("D0=0;",
-                            TopicData.getDeviceTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
+                    if (MQTTConnection.publishAsync("M0=1;",
+                            TopicData.getDeviceModeTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
                         Log.d(TAG, "ledLdrSwitch, onCheckedChanged: NO MQTT CONNECTION");
                         Toast.makeText(appContext,
                                 "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
                         MQTTConnection.connectAsync();
-                    } else { // connected
+                    } /*else { // connected
                         MQTTConnection.publishAsync("M0=1;", TopicData.getDeviceModeTopics(0));
-                    }
-
+                    }*/
                     seekBar.setProgress(0);
-                    LEDIntensity = seekBar.getProgress();
                     seekBar.setClickable(false);
                     seekBar.setEnabled(false);
+                    LEDIntensity = seekBar.getProgress(); // save the change
                 } else {
                    if (MQTTConnection.publishAsync("M0=0;",
-                           TopicData.getDeviceTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
+                           TopicData.getDeviceModeTopics(0)) != MonitorEnums.MQTT_CONNECTED) {
                        Log.d(TAG, "ledLdrSwitch, onCheckedChanged: NO MQTT CONNECTION");
                        Toast.makeText(appContext,
                                "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
                        MQTTConnection.connectAsync();
-                    } else {
-                   }
+                   } /*else {
+                       MQTTConnection.publishAsync("M0=0;", TopicData.getDeviceModeTopics(0));
+                   }*/
                     seekBar.setClickable(true);
                     seekBar.setEnabled(true);
                 }
@@ -199,16 +199,11 @@ public class DeviceActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-
-                /* check if devices online by subscribing async to device status topic */
-                // deviceStatus.setText("OFFLINE");
-
-                Integer seekBarIntValue = seekBar.getProgress();
-                Float value = (float)seekBarIntValue;
-                Float scaledValue = (value/MonitorConstants.MAX_SEEKBAR_VALUE)*MonitorConstants.MAX_LED_INTENSITY;
-                Log.d(TAG, "seekBar value: "+value+"| scaled LED intensity: "+scaledValue);
-                if (MQTTConnection.publishAsync("D0="+scaledValue.intValue()
-                        +";", TopicData.getDeviceTopics(MonitorEnums.LED_DEVICE)) != MonitorEnums.MQTT_CONNECTED) {
+                Float value = (float)seekBar.getProgress();
+                Log.d(TAG, "seekBar value: "+value);
+                if (MQTTConnection.publishAsync("D0="+value
+                        +";", TopicData.getDeviceTopics(MonitorEnums.LED_DEVICE))
+                        != MonitorEnums.MQTT_CONNECTED) {
                     Log.d(TAG, "seekBar: NO MQTT CONNECTION");
                     Toast.makeText(appContext,
                             "Client not connected to MQTT", Toast.LENGTH_SHORT).show();
@@ -225,8 +220,6 @@ public class DeviceActivity extends AppCompatActivity {
                     Log.d(TAG, "onClick: no device selected");
                     Toast.makeText(appContext,
                             "No device selected", Toast.LENGTH_SHORT).show();
-//                    deviceStatus.setText("N/A");
-
                 } else {
                     Log.d(TAG, "onClick: valid device selected, index "+ currentDeviceIndex);
                     checkIfDeviceOnline();
@@ -244,15 +237,16 @@ public class DeviceActivity extends AppCompatActivity {
         mqtt5Client.toAsync().subscribeWith().topicFilter(topic)/*.qos(MqttQos.AT_LEAST_ONCE)*/
                 .callback(publish -> {
                     String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
-                    System.out.println("Received data in callback, topic: " + topic + ", payload: " + payload);
+                    System.out.println("Received data; topic: " + topic + ", payload: " + payload);
                     mqtt5Client.toBlocking().unsubscribeWith().topicFilter(topic).send();
-                    long deviceTimestampMillis = ParseUtils.parseDeviceJsonTimestamp(payload) - MonitorConstants.TIMEZONE_OFFSET;
-                    long currentTime = System.currentTimeMillis() /*+ MonitorConstants.TIMEZONE_OFFSET*/;
+                    long deviceTimestamp = ParseUtils.parseDeviceJsonTimestamp(payload)
+                            - MonitorConstants.TIMEZONE_OFFSET;
+                    long currentTime = System.currentTimeMillis();
 
                     Log.d(TAG, "checkIfDeviceOnline: deviceTimestamp: "
-                            + deviceTimestampMillis+ ", currentTime: " + currentTime
-                            + " difference: "+Math.abs(deviceTimestampMillis - currentTime));
-                    if (Math.abs(deviceTimestampMillis - currentTime) < MonitorConstants.TWO_MINUTES) {
+                            + deviceTimestamp+ ", currentTime: " + currentTime
+                            + " difference: "+Math.abs(deviceTimestamp - currentTime));
+                    if (Math.abs(deviceTimestamp - currentTime) < MonitorConstants.TWO_MINUTES) {
                         deviceStatus.post(new Runnable() {
                             @Override
                             public void run() {

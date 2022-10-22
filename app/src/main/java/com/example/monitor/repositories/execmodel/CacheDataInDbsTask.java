@@ -26,7 +26,7 @@ public class CacheDataInDbsTask implements Callable<String> {
     private boolean shouldClearWeatherCache = false;
     private boolean storeWeatherDataIteratively = false;
 
-    /* constructors for caching of different data types */
+    /*** constructors for caching of different data types ***/
     /* for location */
     public CacheDataInDbsTask(MonitorLocation fetchedLocation, LocationDao locationDaoReference) {
         Log.d(TAG, "CacheDataInDbsTask: task instantiated with location");
@@ -45,7 +45,7 @@ public class CacheDataInDbsTask implements Callable<String> {
         this.weatherDaoReference = weatherDaoReference;
     }
     
-    /* corresponding caching routines */
+    /*** corresponding caching routines ***/
     public synchronized void cacheLocationData(/*MonitorLocation locationEntry*/) {
         List<MonitorLocation> tempList = locationDaoReference.getLocationTableNonLive();
         location.setId(tempList.get(0).getId());
@@ -67,7 +67,6 @@ public class CacheDataInDbsTask implements Callable<String> {
     }
 
     private void cacheWeatherDataListIteratively(List<Weather> weatherList) {
-
         boolean printDataInfo = false;
         Iterator iter = weatherList.iterator();
         while (iter.hasNext()) {
@@ -88,11 +87,8 @@ public class CacheDataInDbsTask implements Callable<String> {
                         + "\nID: " + weatherEntryInIter.getId()
                         + "\nPersistence: " + weatherEntryInIter.getPersistence());
             }
-
         }
-
     }
-
 
     /* overridden call method for submitting task object to executor */
     @SuppressLint("LongLogTag")
@@ -135,7 +131,6 @@ public class CacheDataInDbsTask implements Callable<String> {
         if (weatherDataPoint != null){
             cacheWeatherDataPoint(weatherDataPoint);
         }
-
         return null;
     }
 

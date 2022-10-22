@@ -265,23 +265,23 @@ public class MainActivity extends AppCompatActivity {
         weatherLineChart.getDescription().setTextSize(12f);
 
         /* set up data to be drawn on the graph */
-        List<Entry> twelveHourWeatherList = new ArrayList<>();
-        List<Entry> hourlyWeatherList = new ArrayList<>();
-        List<Entry> sensorWeatherList = new ArrayList<>();
+        List<Entry> twelveHourList = new ArrayList<>();
+        List<Entry> hourlyList = new ArrayList<>();
+        List<Entry> sensorList = new ArrayList<>();
 
-        separateWeatherDataTrendsFixed(dailyTimeOrigin, weathers, twelveHourWeatherList,
-                hourlyWeatherList, sensorWeatherList, selectedParam);
+        separateWeatherDataTrendsFixed(dailyTimeOrigin, weathers, twelveHourList,
+                hourlyList, sensorList, selectedParam);
 
         /* sorting needed to avoid NegativeArraySizeException with MPAndroidChart library */
-        Collections.sort(twelveHourWeatherList, new EntryXComparator());
-        Collections.sort(hourlyWeatherList, new EntryXComparator());
-        Collections.sort(sensorWeatherList, new EntryXComparator());
+        Collections.sort(twelveHourList, new EntryXComparator());
+        Collections.sort(hourlyList, new EntryXComparator());
+        Collections.sort(sensorList, new EntryXComparator());
 
         /* bind the data to the temperatureLineChart */
         ArrayList<ILineDataSet> lineDataSets = new ArrayList<>();
-        LineDataSet twelveHourDataSet = new LineDataSet(twelveHourWeatherList,"Weather API (12hr)");
-        LineDataSet oneHourDataSet = new LineDataSet(hourlyWeatherList,"Weather API (1hr)");
-        LineDataSet oneHourSensorDataSet = new LineDataSet(sensorWeatherList,"Sensor (1hr)");
+        LineDataSet twelveHourDataSet = new LineDataSet(twelveHourList,"Weather API (12hr)");
+        LineDataSet oneHourDataSet = new LineDataSet(hourlyList,"Weather API (1hr)");
+        LineDataSet oneHourSensorDataSet = new LineDataSet(sensorList,"Sensor (1hr)");
 
         twelveHourDataSet.setDrawCircles(true);twelveHourDataSet.setColor(Color.RED);
         twelveHourDataSet.setValueTextColor(Color.WHITE);
@@ -360,7 +360,8 @@ public class MainActivity extends AppCompatActivity {
         return timeUnitOrigin;
     }
 
-    private void drawChartAxes(Integer yAxisMin, Integer yAxisMax, Integer yLabelCount, Integer xLabelCount) {
+    private void drawChartAxes(Integer yAxisMin, Integer yAxisMax, Integer yLabelCount,
+                               Integer xLabelCount) {
         XAxis xAxis = weatherLineChart.getXAxis();
         xAxis.setAxisMaximum(48);
         xAxis.setAxisMinimum(0);

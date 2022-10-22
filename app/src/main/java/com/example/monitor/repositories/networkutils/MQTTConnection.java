@@ -85,19 +85,13 @@ public class MQTTConnection {
         }
     }
 
-    public static int publishBlocking(String payload, String topic) {
-
-        // check connectivity; if dropped, reconnect. if fails, skip and exit with error
+    public static void publishBlocking(String payload, String topic) {
         Log.d(TAG, "publishBlocking, state: "+client.toBlocking().getState());
-
         client.toBlocking().publishWith()
                 .topic(topic)
                 .qos(MqttQos.AT_LEAST_ONCE)
                 .payload(payload.getBytes())
                 .send();
-
-        return 0;
-
     }
 
     public static int publishAsync(String payload, String topic) {
@@ -109,8 +103,6 @@ public class MQTTConnection {
                    .send();
            return MonitorEnums.MQTT_CONNECTED;
        }
-
-        // Attempt to reconnect here?
 
        return MonitorEnums.MQTT_NOT_CONNECTED;
     }
